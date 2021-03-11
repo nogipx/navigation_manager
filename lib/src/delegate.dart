@@ -1,6 +1,5 @@
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class AppRouteDelegate extends RouterDelegate<AppRoute>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppRoute> {
@@ -15,22 +14,18 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<RouteManager>(
-      builder: (contex, manager, child) {
-        return Navigator(
-          key: _navigatorKey,
-          pages: manager.pages,
-          onPopPage: (route, dynamic result) {
-            final didPop = route.didPop(result);
-            if (!didPop) {
-              return false;
-            }
-            if (route.settings is MaterialPage) {
-              routeManager.removeRoute(route.settings as MaterialPage, result);
-            }
-            return true;
-          },
-        );
+    return Navigator(
+      key: _navigatorKey,
+      pages: routeManager.pages,
+      onPopPage: (route, dynamic result) {
+        final didPop = route.didPop(result);
+        if (!didPop) {
+          return false;
+        }
+        if (route.settings is MaterialPage) {
+          routeManager.removeRoute(route.settings as MaterialPage, result);
+        }
+        return true;
       },
     );
   }
