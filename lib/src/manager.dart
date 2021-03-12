@@ -1,5 +1,6 @@
 import 'dart:developer' as dev;
 
+import 'package:flutter/foundation.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:uri/uri.dart';
@@ -29,7 +30,7 @@ class RouteManager with ChangeNotifier {
     _pages = [
       MaterialPage<dynamic>(
         key: ValueKey(initialRoute.actualUri),
-        child: getPageBuilder(initialRoute).call(<String, dynamic>{}),
+        child: _getPageBuilder(initialRoute).call(<String, dynamic>{}),
         name: initialRoute.fill().actualUri.toString(),
       )
     ];
@@ -37,24 +38,30 @@ class RouteManager with ChangeNotifier {
 
   AppRoute get currentRoute {
     final currentPath = Uri.parse(pages.last.name);
-    final route = mapRoute.keys.firstWhere((route) {
+    final routes = mapRoute.keys.where((route) {
       return UriParser(route.uriTemplate).matches(currentPath) ?? false;
     });
-    return route.fill();
+    return routes.last?.fill();
   }
 
-  void removeRoute(Page page, dynamic result) {
-    _pages.remove(page);
+  void removePage(Page page, dynamic result) {
     try {
       onRemoveRoute?.call(this, currentRoute);
+      _pages.remove(page);
     } catch (e) {
-      _pages.add(page);
       throw Exception("Remove route aborted. \n$e");
     }
     notifyListeners();
   }
 
+  void popRoute() => removePage(_pages.last, null);
+
   void pushRoute(AppRoute route, {Map<String, dynamic> data}) {
+    assert(route != null);
+    if (route == null) {
+      throw Exception("Null route is not allowed.");
+    }
+
     final _filledRoute = route.fill(data: data);
     final _actualUri = _filledRoute.actualUri.toString();
 
@@ -67,7 +74,7 @@ class RouteManager with ChangeNotifier {
 
     final page = MaterialPage<dynamic>(
       key: ValueKey(_actualUri),
-      child: getPageBuilder(_filledRoute).call(data),
+      child: _getPageBuilder(_filledRoute).call(data),
       name: _actualUri,
     );
     _pages.add(page);
@@ -84,14 +91,16 @@ class RouteManager with ChangeNotifier {
 
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
-  Widget Function(Map<String, dynamic> data) getPageBuilder(AppRoute route) {
+  Widget Function(Map<String, dynamic> data) _getPageBuilder(AppRoute route) {
     Widget Function(Map<String, dynamic> data) _pageBuilder = mapRoute[route];
 
     if (_pageBuilder == null) {
       dev.log("No page builder for $route", name: runtimeType.toString());
 
-      final _unknownRoute = onUnknownRoute(route).fill(data: route.data);
-      _pageBuilder = mapRoute[_unknownRoute];
+      final _unknownRoute = onUnknownRoute(route)?.fill(data: route.data);
+      if (mapRoute.containsKey(_unknownRoute)) {
+        _pageBuilder = mapRoute[_unknownRoute];
+      }
 
       if (_pageBuilder == null) {
         throw Exception(

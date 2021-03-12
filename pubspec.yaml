@@ -1,6 +1,8 @@
 name: navigation_manager
-description: A new Flutter package project.
-version: 0.0.1
+description: >- 
+  Navigation manager for Navigator 2.0 with a convenient declarative way 
+  to define application routes.
+version: 0.0.3
 homepage: https://gitlab.com/nogipx/navigation_manager
 
 environment:
