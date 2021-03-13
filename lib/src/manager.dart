@@ -8,63 +8,80 @@ import 'package:uri/uri.dart';
 class RouteManager with ChangeNotifier {
   final AppRoute initialRoute;
   final AppRoute Function(AppRoute route) onUnknownRoute;
-  final Map<AppRoute, Widget Function(Map<String, dynamic> data)> mapRoute;
+  final Map<AppRoute, Widget Function(Map<String, dynamic> data)> routes;
   final Widget Function(RouteManager manager, AppRoute route, Widget page) pageWrapper;
 
+  /// Called after pushing a route.
   final Function(RouteManager, AppRoute) onPushRoute;
+
+  /// Called before removing a route.
   final Function(RouteManager, AppRoute) onRemoveRoute;
+
+  /// Called when pushed route is the same with current.
+  /// If `onDoublePushRoute` returns `true` then route will be pushed.
+  /// Otherwise if returns `false` then prevents push.
+  /// Returns `false` by default.
   final bool Function(RouteManager, AppRoute) onDoublePushRoute;
+
+  /// Called when pushed route is the same with current and route is root.
+  /// If `onDoublePushSubRootRoute` returns `true`
+  /// then other routes after pushed route will be deleted.
+  /// Otherwise if returns `false` then prevent push, that is, does nothing.
+  /// Returns `false` by default.
+  final bool Function(RouteManager, AppRoute) onDoublePushSubRootRoute;
+
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   final Duration transitionDuration;
   final Duration reverseTransitionDuration;
 
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-  final dynamic Function(
+  final Widget Function(
     Widget child,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) transitionProvider;
 
   List<RouteSettings> _pages;
+  List<AppRoute> _appRoutes;
   List<Page> get pages => List.unmodifiable(_pages);
+
+  Map<AppRoute, List<RouteSettings>> _subRoutes;
 
   RouteManager({
     @required this.initialRoute,
-    @required this.mapRoute,
+    @required this.routes,
     @required this.onUnknownRoute,
     this.pageWrapper,
     this.onPushRoute,
     this.onRemoveRoute,
     this.onDoublePushRoute,
+    this.onDoublePushSubRootRoute,
     this.transitionProvider,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) : assert(mapRoute != null && onUnknownRoute != null && initialRoute != null) {
+  }) : assert(routes != null && onUnknownRoute != null && initialRoute != null) {
+    final _initRoute = initialRoute.fill();
     _pages = [
       CustomPage(
-        key: ObjectKey(initialRoute),
-        child: _getPageBuilder(initialRoute).call(<String, dynamic>{}),
-        name: initialRoute.fill().actualUri.toString(),
-        restorationId: initialRoute.actualUri.toString(),
+        key: ObjectKey(_initRoute),
+        child: _getPageBuilder(routes, _initRoute).call(<String, dynamic>{}),
+        name: _initRoute.actualUri.toString(),
         transitionProvider: transitionProvider,
         transitionDuration: transitionDuration,
         reverseTransitionDuration: reverseTransitionDuration,
       )
     ];
+    _appRoutes = routes.keys.toList();
   }
 
-  AppRoute get currentRoute {
-    final currentPath = Uri.parse(pages.last.name);
-    final routes = mapRoute.keys.where((route) {
-      return UriParser(route.uriTemplate).matches(currentPath) ?? false;
-    });
-    return routes.last?.fill();
+  Future<AppRoute> get currentRoute async {
+    final routes = await _pages.asRoutes(_appRoutes);
+    return routes.last?.value?.fill();
   }
 
-  void removePage(Page page, dynamic result) {
+  void removePage(Page page, dynamic result) async {
     try {
-      onRemoveRoute?.call(this, currentRoute);
+      onRemoveRoute?.call(this, await currentRoute);
       _pages.remove(page);
     } catch (e) {
       throw Exception("Remove route aborted. \n$e");
@@ -74,54 +91,89 @@ class RouteManager with ChangeNotifier {
 
   void popRoute() => removePage(_pages.last, null);
 
-  void pushRoute(AppRoute route, {Map<String, dynamic> data}) {
+  Future<void> pushRoute(AppRoute route, {Map<String, dynamic> data}) async {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
     }
 
-    final _filledRoute = route.fill(data: data);
-    final _actualUri = _filledRoute.actualUri.toString();
+    final curRoute = await currentRoute;
 
-    if (_filledRoute == currentRoute) {
-      final _allow = onDoublePushRoute?.call(this, _filledRoute) ?? false;
-      if (!_allow) {
-        return;
+    // If pushed route is sub-root then find last sub-route
+    // It could be identical - choose strategy (keep or reset)
+    // Or it could be different - then switch sub tree
+    if (route.isSubRoot) {
+      final lastSubroot = await pages.findLastSubRootIndex(_appRoutes);
+
+      // Check is new sub-root is the same with last in tree.
+      if (lastSubroot.value == route) {
+        final hasNoSubRootChildren = lastSubroot.key == _pages.length - 1;
+        if (hasNoSubRootChildren) {
+          dev.log("${lastSubroot.value} has no children pages.");
+          return;
+        }
+        if (_shouldDoubleSubRootRouteReset(route)) {
+          _pages.sublist(lastSubroot.key + 1, _pages.length).forEach((e) {
+            removePage(e, null);
+          });
+        }
+      } else if (lastSubroot.value == null) {
+        _pushRoute(route, data: data);
+      } else {
+        // Swap sub-trees if routes are different
       }
-    }
-
-    final page = CustomPage(
-      key: ObjectKey(_filledRoute),
-      name: _actualUri,
-      child: _getPageBuilder(_filledRoute).call(data),
-      restorationId: _actualUri,
-      transitionProvider: transitionProvider,
-      transitionDuration: transitionDuration,
-      reverseTransitionDuration: reverseTransitionDuration,
-    );
-    _pages.add(page);
-
-    try {
-      onPushRoute?.call(this, _filledRoute);
-    } catch (e) {
-      _pages.remove(page);
-      throw Exception("Push route aborted. \n$e");
+    } else {
+      if (curRoute == route) {
+        if (_shouldDoubleRoutePush(route)) {
+          _pushRoute(route, data: data);
+        }
+      } else {
+        final uniqRoute = AppRoute.uniq(route.template, data: data);
+        _pushRoute(uniqRoute, data: data);
+      }
     }
 
     notifyListeners();
   }
 
+  void _pushRoute(AppRoute route, {Map<String, dynamic> data}) {
+    final _route = route.fill(data: data);
+    final page = CustomPage(
+      key: ObjectKey(_route),
+      name: _route.actualUri.toString(),
+      child: _getPageBuilder(routes, _route).call(data),
+      transitionProvider: transitionProvider,
+      transitionDuration: transitionDuration,
+      reverseTransitionDuration: reverseTransitionDuration,
+    );
+    _pages.add(page);
+    try {
+      onPushRoute?.call(this, _route);
+    } catch (e) {
+      _pages.remove(page);
+      throw Exception("Push route aborted. \n$e");
+    }
+  }
+
+  bool _shouldDoubleSubRootRouteReset(AppRoute _pushedRoute) {
+    return onDoublePushSubRootRoute?.call(this, _pushedRoute) ?? false;
+  }
+
+  bool _shouldDoubleRoutePush(AppRoute _pushedRoute) {
+    return onDoublePushRoute?.call(this, _pushedRoute) ?? false;
+  }
+
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
-  Widget Function(Map<String, dynamic> data) _getPageBuilder(AppRoute route) {
-    Widget Function(Map<String, dynamic> data) _pageBuilder = mapRoute[route];
+  Widget Function(Map<String, dynamic> data) _getPageBuilder(Map routes, AppRoute route) {
+    Widget Function(Map<String, dynamic> data) _pageBuilder = routes[route];
 
     if (_pageBuilder == null) {
       dev.log("No page builder for $route", name: runtimeType.toString());
 
       final _unknownRoute = onUnknownRoute(route)?.fill(data: route.data);
-      if (mapRoute.containsKey(_unknownRoute)) {
-        _pageBuilder = mapRoute[_unknownRoute];
+      if (routes.containsKey(_unknownRoute)) {
+        _pageBuilder = routes[_unknownRoute];
       }
 
       if (_pageBuilder == null) {
@@ -141,48 +193,47 @@ class RouteManager with ChangeNotifier {
   }
 }
 
-class CustomPage extends Page {
-  final String name;
-  final Widget child;
-  final Object arguments;
-  final String restorationId;
+extension RouteList on List<RouteSettings> {
+  Future<MapEntry<int, AppRoute>> findLastSubRootIndex(List<AppRoute> appRoutes) async {
+    final pageRoutes = await this.asRoutes(appRoutes);
 
-  final Duration transitionDuration;
-  final Duration reverseTransitionDuration;
+    final subRoots =
+        pageRoutes.where((e) => e.value != null && e.value.isSubRoot).toList();
+    final result = subRoots.fold(
+      MapEntry(-1, null),
+      (a, b) => b.key > a.key ? b : a,
+    );
+    return result;
+  }
 
-  final dynamic Function(
-    Widget child,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  ) transitionProvider;
+  List<RouteSettings> resetToLastRoute(AppRoute route) {}
 
-  CustomPage({
-    Key key,
-    @required this.name,
-    @required this.child,
-    this.restorationId,
-    this.arguments,
-    this.transitionProvider,
-    this.transitionDuration = const Duration(milliseconds: 300),
-    this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) : super(key: key, name: name, restorationId: restorationId);
+  MapEntry<int, AppRoute> findPageByRoute(AppRoute) {}
 
-  Route createRoute(BuildContext context) {
-    if (transitionProvider != null) {
-      return PageRouteBuilder(
-        settings: this,
-        transitionDuration: transitionDuration,
-        reverseTransitionDuration: reverseTransitionDuration,
-        pageBuilder: (context, _, __) => child,
-        transitionsBuilder: (context, animation, animation2, page) {
-          return transitionProvider(page, animation, animation2);
+  Future<List<MapEntry<int, AppRoute>>> asRoutes(List<AppRoute> appRoutes) async {
+    final appRouteParsers = appRoutes.map((e) => UriParser(e.uriTemplate)).toList();
+    final pageUriNames =
+        asMap().map((k, v) => MapEntry(k, Uri.parse(v.name))).entries.toList();
+
+    final List<MapEntry<int, AppRoute>> pageRoutes = await Future.wait(
+      pageUriNames.map(
+        (pageName) async {
+          final routeTemplate = appRouteParsers
+              .lastWhere((parser) => parser.matches(pageName.value), orElse: () => null)
+              ?.template
+              ?.template;
+          if (routeTemplate != null) {
+            final route = appRoutes.firstWhere(
+              (e) => e.template.contains(routeTemplate),
+              orElse: () => null,
+            );
+            return MapEntry<int, AppRoute>(pageName.key, route);
+          } else {
+            return null;
+          }
         },
-      );
-    } else {
-      return MaterialPageRoute(
-        settings: this,
-        builder: (context) => child,
-      );
-    }
+      ),
+    );
+    return pageRoutes;
   }
 }
