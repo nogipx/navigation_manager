@@ -3,7 +3,6 @@ import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:uri/uri.dart';
 
 class RouteManager with ChangeNotifier {
   final AppRoute initialRoute;
@@ -42,10 +41,7 @@ class RouteManager with ChangeNotifier {
   ) transitionProvider;
 
   List<RouteSettings> _pages;
-  List<AppRoute> _appRoutes;
-  List<Page> get pages => List.unmodifiable(_pages);
-
-  Map<AppRoute, List<RouteSettings>> _subRoutes;
+  List<AppPage> get pages => List.unmodifiable(_pages);
 
   RouteManager({
     @required this.initialRoute,
@@ -62,26 +58,24 @@ class RouteManager with ChangeNotifier {
   }) : assert(routes != null && onUnknownRoute != null && initialRoute != null) {
     final _initRoute = initialRoute.fill();
     _pages = [
-      CustomPage(
+      AppPage(
         key: ObjectKey(_initRoute),
+        route: _initRoute,
         child: _getPageBuilder(routes, _initRoute).call(<String, dynamic>{}),
         name: _initRoute.actualUri.toString(),
+        restorationId: _initRoute.template,
         transitionProvider: transitionProvider,
         transitionDuration: transitionDuration,
         reverseTransitionDuration: reverseTransitionDuration,
       )
     ];
-    _appRoutes = routes.keys.toList();
   }
 
-  Future<AppRoute> get currentRoute async {
-    final routes = await _pages.asRoutes(_appRoutes);
-    return routes.last?.value?.fill();
-  }
+  AppPage get currentPage => pages.last;
 
-  void removePage(Page page, dynamic result) async {
+  void removePage(AppPage page, dynamic result) async {
     try {
-      onRemoveRoute?.call(this, await currentRoute);
+      onRemoveRoute?.call(this, page.route);
       _pages.remove(page);
     } catch (e) {
       throw Exception("Remove route aborted. \n$e");
@@ -89,47 +83,37 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
-  void popRoute() => removePage(_pages.last, null);
+  void popRoute() => removePage(currentPage, null);
 
   Future<void> pushRoute(AppRoute route, {Map<String, dynamic> data}) async {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
     }
+    final _route = route.fill(data: data);
 
-    final curRoute = await currentRoute;
-
-    // If pushed route is sub-root then find last sub-route
+    // If pushed route is sub-root then find nearest sub-route
     // It could be identical - choose strategy (keep or reset)
     // Or it could be different - then switch sub tree
     if (route.isSubRoot) {
-      final lastSubroot = await pages.findLastSubRootIndex(_appRoutes);
-
-      // Check is new sub-root is the same with last in tree.
-      if (lastSubroot.value == route) {
-        final hasNoSubRootChildren = lastSubroot.key == _pages.length - 1;
-        if (hasNoSubRootChildren) {
-          dev.log("${lastSubroot.value} has no children pages.");
-          return;
-        }
-        if (_shouldDoubleSubRootRouteReset(route)) {
-          _pages.sublist(lastSubroot.key + 1, _pages.length).forEach((e) {
-            removePage(e, null);
-          });
-        }
-      } else if (lastSubroot.value == null) {
+      final subTree = pages.getSubTrees().find(route);
+      if (subTree != null) {
+        final needReset = _shouldResetSubtree(route);
+        final newRoutes = pages.subTreeMovedDown(route, reset: needReset);
+        _pages = newRoutes;
+      } else {
         _pushRoute(route, data: data);
-      } else {
-        // Swap sub-trees if routes are different
       }
-    } else {
-      if (curRoute == route) {
-        if (_shouldDoubleRoutePush(route)) {
-          _pushRoute(route, data: data);
+    }
+
+    // If new route is not sub root then just push it.
+    else {
+      if (currentPage.route == _route) {
+        if (_shouldPushSameRoute(_route)) {
+          _pushRoute(_route, data: data);
         }
       } else {
-        final uniqRoute = AppRoute.uniq(route.template, data: data);
-        _pushRoute(uniqRoute, data: data);
+        _pushRoute(_route, data: data);
       }
     }
 
@@ -138,10 +122,12 @@ class RouteManager with ChangeNotifier {
 
   void _pushRoute(AppRoute route, {Map<String, dynamic> data}) {
     final _route = route.fill(data: data);
-    final page = CustomPage(
+    final page = AppPage(
       key: ObjectKey(_route),
+      route: _route,
       name: _route.actualUri.toString(),
       child: _getPageBuilder(routes, _route).call(data),
+      restorationId: _route.actualUri.toString(),
       transitionProvider: transitionProvider,
       transitionDuration: transitionDuration,
       reverseTransitionDuration: reverseTransitionDuration,
@@ -155,13 +141,11 @@ class RouteManager with ChangeNotifier {
     }
   }
 
-  bool _shouldDoubleSubRootRouteReset(AppRoute _pushedRoute) {
-    return onDoublePushSubRootRoute?.call(this, _pushedRoute) ?? false;
-  }
+  bool _shouldResetSubtree(AppRoute route) =>
+      route.isSubRoot && (onDoublePushSubRootRoute?.call(this, route) ?? false);
 
-  bool _shouldDoubleRoutePush(AppRoute _pushedRoute) {
-    return onDoublePushRoute?.call(this, _pushedRoute) ?? false;
-  }
+  bool _shouldPushSameRoute(AppRoute route) =>
+      onDoublePushRoute?.call(this, route) ?? false;
 
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
@@ -190,50 +174,5 @@ class RouteManager with ChangeNotifier {
     } else {
       return _pageBuilder;
     }
-  }
-}
-
-extension RouteList on List<RouteSettings> {
-  Future<MapEntry<int, AppRoute>> findLastSubRootIndex(List<AppRoute> appRoutes) async {
-    final pageRoutes = await this.asRoutes(appRoutes);
-
-    final subRoots =
-        pageRoutes.where((e) => e.value != null && e.value.isSubRoot).toList();
-    final result = subRoots.fold(
-      MapEntry(-1, null),
-      (a, b) => b.key > a.key ? b : a,
-    );
-    return result;
-  }
-
-  List<RouteSettings> resetToLastRoute(AppRoute route) {}
-
-  MapEntry<int, AppRoute> findPageByRoute(AppRoute) {}
-
-  Future<List<MapEntry<int, AppRoute>>> asRoutes(List<AppRoute> appRoutes) async {
-    final appRouteParsers = appRoutes.map((e) => UriParser(e.uriTemplate)).toList();
-    final pageUriNames =
-        asMap().map((k, v) => MapEntry(k, Uri.parse(v.name))).entries.toList();
-
-    final List<MapEntry<int, AppRoute>> pageRoutes = await Future.wait(
-      pageUriNames.map(
-        (pageName) async {
-          final routeTemplate = appRouteParsers
-              .lastWhere((parser) => parser.matches(pageName.value), orElse: () => null)
-              ?.template
-              ?.template;
-          if (routeTemplate != null) {
-            final route = appRoutes.firstWhere(
-              (e) => e.template.contains(routeTemplate),
-              orElse: () => null,
-            );
-            return MapEntry<int, AppRoute>(pageName.key, route);
-          } else {
-            return null;
-          }
-        },
-      ),
-    );
-    return pageRoutes;
   }
 }

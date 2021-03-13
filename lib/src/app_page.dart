@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:navigation_manager/navigation_manager.dart';
 
-class CustomPage extends Page {
+class AppPage extends Page {
   final String name;
   final Widget child;
   final Object arguments;
   final String restorationId;
+  final AppRoute route;
 
   final Duration transitionDuration;
   final Duration reverseTransitionDuration;
@@ -15,10 +17,11 @@ class CustomPage extends Page {
     Animation<double> secondaryAnimation,
   ) transitionProvider;
 
-  CustomPage({
+  AppPage({
     Key key,
     @required this.name,
     @required this.child,
+    @required this.route,
     this.restorationId,
     this.arguments,
     this.transitionProvider,
