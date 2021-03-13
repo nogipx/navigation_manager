@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 class AppRouteDelegate extends RouterDelegate<AppRoute>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppRoute> {
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey();
   final RouteManager routeManager;
   final Widget Function(Widget navigator) navigatorWrapper;
 
@@ -18,16 +17,16 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
   @override
   Widget build(BuildContext context) {
     final navigator = Navigator(
-      key: _navigatorKey,
+      key: navigatorKey,
       pages: routeManager.pages,
       onPopPage: (route, dynamic result) {
         final didPop = route.didPop(result);
         if (!didPop) {
           return false;
         }
-        if (route.settings is MaterialPage) {
+        if (route.settings is Page) {
           try {
-            routeManager.removePage(route.settings as MaterialPage, result);
+            routeManager.removePage(route.settings as Page, result);
           } catch (e) {
             dev.log("[${route.settings.name}] $e", name: runtimeType.toString());
           }
@@ -43,5 +42,5 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
       routeManager.pushRoute(configuration);
 
   @override
-  GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
+  GlobalKey<NavigatorState> get navigatorKey => routeManager.navigatorKey;
 }
