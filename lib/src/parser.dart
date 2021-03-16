@@ -7,15 +7,20 @@ import 'package:uri/uri.dart';
 class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
   final List<AppRoute> routes;
   final AppRoute unknownRoute;
+  final Uri Function(Uri initialUri) transformUri;
+  final Function(Uri uri, AppRoute selectedRoute) onExternalRoute;
 
   AppRouteInformationParser({
     @required this.routes,
     @required this.unknownRoute,
+    this.transformUri,
+    this.onExternalRoute,
   });
 
   @override
   Future<AppRoute> parseRouteInformation(RouteInformation routeInformation) async {
-    final _uri = Uri.parse(routeInformation.location);
+    final _initial = Uri.parse(routeInformation.location);
+    final _uri = transformUri?.call(_initial) ?? _initial;
     final route = routes.firstWhere(
       (route) => UriParser(route.uriTemplate).matches(_uri),
       orElse: () {
@@ -26,6 +31,8 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
         return unknownRoute;
       },
     );
-    return route.fill(rawData: UriParser(route.uriTemplate).parse(_uri));
+    final _route = route.fill(rawData: UriParser(route.uriTemplate).parse(_uri));
+    onExternalRoute?.call(_uri, _route);
+    return _route;
   }
 }
