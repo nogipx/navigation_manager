@@ -25,7 +25,7 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
         );
         return unknownRoute;
       },
-    ).copyWith(actualUri: _uri);
-    return route;
+    );
+    return route.fill(rawData: UriParser(route.uriTemplate).parse(_uri));
   }
 }

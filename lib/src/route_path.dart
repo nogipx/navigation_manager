@@ -52,9 +52,10 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
     }
   }
 
-  AppRoute fill({Args data}) {
+  AppRoute fill({Args data, Map<String, dynamic> rawData}) {
+    final _data = data?.toJson() ?? rawData ?? <String, dynamic>{};
     return copyWith(
-      actualUri: UriParser(uriTemplate).expand(data?.toJson() ?? {}),
+      actualUri: UriParser(uriTemplate).expand(_data),
       data: data,
     );
   }
