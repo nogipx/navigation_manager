@@ -15,3 +15,6 @@ to define app routes
 
 * Implement effective navigation with subtrees. Inspired by vk mobile.
 
+## [0.0.4] - 16 March 2021
+
+* Add class based arguments for routes
