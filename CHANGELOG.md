@@ -18,3 +18,7 @@ to define app routes
 ## [0.0.4] - 16 March 2021
 
 * Add class based arguments for routes
+
+## [0.0.5] - 16 March 2021
+
+* Fix pushing route from system with raw arguments
