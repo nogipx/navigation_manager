@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 
 class RouteManager with ChangeNotifier {
   final AppRoute initialRoute;
+  final AppRouteArgs initialRouteArgs;
   final AppRoute Function(AppRoute route) onUnknownRoute;
-  final Map<AppRoute, Widget Function(Map<String, dynamic> data)> routes;
+  final Map<AppRoute, Widget Function(AppRouteArgs data)> routes;
   final Widget Function(RouteManager manager, AppRoute route, Widget page) pageWrapper;
 
   /// Called after pushing a route.
@@ -47,6 +48,7 @@ class RouteManager with ChangeNotifier {
     @required this.initialRoute,
     @required this.routes,
     @required this.onUnknownRoute,
+    this.initialRouteArgs,
     this.pageWrapper,
     this.onPushRoute,
     this.onRemoveRoute,
@@ -61,7 +63,7 @@ class RouteManager with ChangeNotifier {
       AppPage(
         key: ObjectKey(_initRoute),
         route: _initRoute,
-        child: _getPageBuilder(routes, _initRoute).call(<String, dynamic>{}),
+        child: _getPageBuilder(routes, _initRoute).call(initialRouteArgs),
         name: _initRoute.actualUri.toString(),
         restorationId: _initRoute.template,
         transitionProvider: transitionProvider,
@@ -85,7 +87,7 @@ class RouteManager with ChangeNotifier {
 
   void popRoute() => removePage(currentPage, null);
 
-  Future<void> pushRoute(AppRoute route, {Map<String, dynamic> data}) async {
+  Future<void> pushRoute(AppRoute route, {AppRouteArgs data}) async {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
@@ -120,7 +122,7 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
-  void _pushRoute(AppRoute route, {Map<String, dynamic> data}) {
+  void _pushRoute(AppRoute route, {AppRouteArgs data}) {
     final _route = route.fill(data: data);
     final page = AppPage(
       key: ObjectKey(_route),
@@ -149,11 +151,11 @@ class RouteManager with ChangeNotifier {
 
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
-  Widget Function(Map<String, dynamic> data) _getPageBuilder(
-    Map<AppRoute, Widget Function(Map<String, dynamic> data)> routes,
+  Widget Function(AppRouteArgs data) _getPageBuilder(
+    Map<AppRoute, Widget Function(AppRouteArgs data)> routes,
     AppRoute route,
   ) {
-    Widget Function(Map<String, dynamic> data) _pageBuilder = routes[route];
+    Widget Function(AppRouteArgs data) _pageBuilder = routes[route];
 
     if (_pageBuilder == null) {
       dev.log("No page builder for $route", name: runtimeType.toString());
@@ -171,7 +173,7 @@ class RouteManager with ChangeNotifier {
     }
 
     if (pageWrapper != null) {
-      return (Map<String, dynamic> data) {
+      return (AppRouteArgs data) {
         return pageWrapper.call(this, route, _pageBuilder.call(data));
       };
     } else {

@@ -1,10 +1,15 @@
 import 'package:equatable/equatable.dart';
 import 'package:uri/uri.dart';
 
+abstract class AppRouteArgs {
+  Map<String, dynamic> toJson();
+  AppRouteArgs fromJson(Map<String, dynamic> json);
+}
+
 // ignore: must_be_immutable
-class AppRoute extends Equatable {
+class AppRoute<Args extends AppRouteArgs> extends Equatable {
   final String template;
-  final Map<String, dynamic> data;
+  final Args data;
 
   UriTemplate _uriTemplate;
   UriTemplate get uriTemplate => _uriTemplate;
@@ -31,20 +36,26 @@ class AppRoute extends Equatable {
     _uniqField = DateTime.now().millisecondsSinceEpoch;
   }
 
-  AppRoute copyWith({Uri actualUri, Map<String, dynamic> data}) {
+  AppRoute copyWith({Uri actualUri, Args data}) {
     if (isSubRoot) {
-      return AppRoute.subroot(template,
-          actualUri: actualUri ?? this.actualUri, data: data);
+      return AppRoute<Args>.subroot(
+        template,
+        actualUri: actualUri ?? this.actualUri,
+        data: data,
+      );
     } else {
-      return AppRoute(template, actualUri: actualUri ?? this.actualUri, data: data);
+      return AppRoute<Args>(
+        template,
+        actualUri: actualUri ?? this.actualUri,
+        data: data,
+      );
     }
   }
 
-  AppRoute fill({Map<String, dynamic> data}) {
-    final _data = data ?? <String, dynamic>{};
+  AppRoute fill({Args data}) {
     return copyWith(
-      actualUri: UriParser(uriTemplate).expand(_data),
-      data: _data,
+      actualUri: UriParser(uriTemplate).expand(data?.toJson() ?? {}),
+      data: data,
     );
   }
 

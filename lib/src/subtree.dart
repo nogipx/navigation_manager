@@ -70,9 +70,8 @@ extension PageList on List<AppPage> {
           [],
         ));
       } else if (!page.route.isSubRoot) {
-        final treeChildren = treesEntries.last;
-        if (treeChildren != null) {
-          treeChildren.value.add(
+        if (treesEntries.isNotEmpty && treesEntries.last != null) {
+          treesEntries.last.value.add(
             _PageWithPosition(
               customPage: page,
               position: index,
