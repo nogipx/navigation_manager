@@ -3,7 +3,6 @@ import 'package:uri/uri.dart';
 
 abstract class AppRouteArgs {
   Map<String, dynamic> toJson();
-  AppRouteArgs fromJson(Map<String, dynamic> json);
 }
 
 // ignore: must_be_immutable
