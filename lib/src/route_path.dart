@@ -1,5 +1,3 @@
-import 'dart:math' show Random;
-
 import 'package:equatable/equatable.dart';
 import 'package:uri/uri.dart';
 

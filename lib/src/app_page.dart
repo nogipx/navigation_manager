@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 
-class AppPage extends Page {
-  final String name;
-  final Widget child;
-  final Object arguments;
-  final String restorationId;
+class AppPage extends Page<AppPage> {
   final AppRoute route;
+  final Widget child;
 
   final Duration transitionDuration;
   final Duration reverseTransitionDuration;
@@ -17,19 +14,20 @@ class AppPage extends Page {
     Animation<double> secondaryAnimation,
   ) transitionProvider;
 
-  AppPage({
-    Key key,
-    @required this.name,
+  const AppPage({
+    LocalKey key,
+    @required String name,
     @required this.child,
     @required this.route,
-    this.restorationId,
-    this.arguments,
+    String restorationId,
+    Object arguments,
     this.transitionProvider,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) : super(key: key, name: name, restorationId: restorationId);
+  }) : super(key: key, name: name, restorationId: restorationId, arguments: arguments);
 
-  Route createRoute(BuildContext context) {
+  @override
+  Route<AppPage> createRoute(BuildContext context) {
     if (transitionProvider != null) {
       return PageRouteBuilder(
         settings: this,

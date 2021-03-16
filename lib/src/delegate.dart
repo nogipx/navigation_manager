@@ -24,9 +24,9 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
         if (!didPop) {
           return false;
         }
-        if (route.settings is Page) {
+        if (route.settings is AppPage) {
           try {
-            routeManager.removePage(route.settings as Page, result);
+            routeManager.removePage(route.settings as AppPage, result);
           } catch (e) {
             dev.log("[${route.settings.name}] $e", name: runtimeType.toString());
           }

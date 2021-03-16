@@ -1,10 +1,12 @@
+import 'package:meta/meta.dart';
+
 import 'export.dart';
 
 class _PageWithPosition {
   final AppPage customPage;
   final int position;
 
-  _PageWithPosition({this.customPage, this.position})
+  _PageWithPosition({@required this.customPage, @required this.position})
       : assert(customPage != null && position != null && position >= 0);
 
   @override
@@ -36,12 +38,12 @@ class _SubTree {
 
 extension PageList on List<AppPage> {
   _SubTree getVisibleSubTree() {
-    final subTrees = this.getSubTrees();
+    final subTrees = getSubTrees();
     return subTrees.isNotEmpty ? subTrees.last : null;
   }
 
   List<AppPage> subTreeMovedDown(AppRoute route, {bool reset = false}) {
-    final subTree = this.getSubTrees().find(route);
+    final subTree = getSubTrees().find(route);
     if (subTree != null) {
       final newRoutes = List.of(this)
         ..removeRange(subTree.startPosition, subTree.endPosition + 1);

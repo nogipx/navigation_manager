@@ -73,7 +73,7 @@ class RouteManager with ChangeNotifier {
 
   AppPage get currentPage => pages.last;
 
-  void removePage(AppPage page, dynamic result) async {
+  Future<void> removePage(AppPage page, dynamic result) async {
     try {
       onRemoveRoute?.call(this, page.route);
       _pages.remove(page);
@@ -149,7 +149,10 @@ class RouteManager with ChangeNotifier {
 
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
-  Widget Function(Map<String, dynamic> data) _getPageBuilder(Map routes, AppRoute route) {
+  Widget Function(Map<String, dynamic> data) _getPageBuilder(
+    Map<AppRoute, Widget Function(Map<String, dynamic> data)> routes,
+    AppRoute route,
+  ) {
     Widget Function(Map<String, dynamic> data) _pageBuilder = routes[route];
 
     if (_pageBuilder == null) {
