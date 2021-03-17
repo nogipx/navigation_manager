@@ -63,12 +63,14 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
         template,
         actualUri: actualUri ?? this.actualUri,
         data: data,
+        duplicateStrategy: subRootDuplicateStrategy,
       );
     } else {
       return AppRoute<Args>(
         template,
         actualUri: actualUri ?? this.actualUri,
         data: data,
+        duplicateStrategy: duplicateStrategy,
       );
     }
   }
