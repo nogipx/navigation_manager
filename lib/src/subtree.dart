@@ -56,6 +56,14 @@ extension PageList on List<AppPage> {
     }
   }
 
+  MapEntry<int, AppPage> getPageWithIndex(AppRoute route) {
+    final page = asMap().entries.lastWhere(
+          (e) => e.value.route == route,
+          orElse: () => null,
+        );
+    return page;
+  }
+
   List<AppPage> removeSubTree(AppRoute route) {
     final subTree = getSubTrees().find(route);
     if (subTree != null) {

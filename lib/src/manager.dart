@@ -101,7 +101,7 @@ class RouteManager with ChangeNotifier {
   }
 
   void removeRoute(AppRoute route, {dynamic data}) {
-    final page = _getPageWithIndex(route);
+    final page = pages.getPageWithIndex(route);
     if (page != null) {
       removePage(page.value, data);
     } else {
@@ -110,7 +110,7 @@ class RouteManager with ChangeNotifier {
   }
 
   void removeUntilRoute(AppRoute route) {
-    final page = _getPageWithIndex(route);
+    final page = pages.getPageWithIndex(route);
     if (page != null) {
       final lastPageIndex = _pages.length - 1;
       if (page.key != lastPageIndex) {
@@ -241,24 +241,10 @@ class RouteManager with ChangeNotifier {
     }
   }
 
-  MapEntry<int, AppPage> _getPageWithIndex(AppRoute route) {
-    final _page = _pages
-        .asMap()
-        .entries
-        .lastWhere((e) => e.value.route == route, orElse: () => null);
-    return _page;
-  }
-
   void _removePage(AppPage page, dynamic result) {
     onRemoveRoute?.call(this, page.route);
     _pages.remove(page);
   }
-
-  bool _shouldResetSubtree(AppRoute route) =>
-      route.isSubRoot && (onDoublePushSubRootRoute?.call(this, route) ?? false);
-
-  bool _shouldPushSameRoute(AppRoute route) =>
-      onDoublePushRoute?.call(this, route) ?? false;
 
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
