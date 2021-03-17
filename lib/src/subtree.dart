@@ -56,6 +56,17 @@ extension PageList on List<AppPage> {
     }
   }
 
+  List<AppPage> removeSubTree(AppRoute route) {
+    final subTree = getSubTrees().find(route);
+    if (subTree != null) {
+      final newRoutes = List.of(this)
+        ..removeRange(subTree.startPosition, subTree.endPosition + 1);
+      return newRoutes;
+    } else {
+      return this;
+    }
+  }
+
   List<_SubTree> getSubTrees() {
     final List<MapEntry<_PageWithPosition, List<_PageWithPosition>>> treesEntries = [];
     asMap().entries.forEach((entry) {

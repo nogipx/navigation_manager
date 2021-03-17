@@ -77,12 +77,28 @@ class RouteManager with ChangeNotifier {
 
   Future<void> removePage(AppPage page, dynamic result) async {
     try {
-      onRemoveRoute?.call(this, page.route);
-      _pages.remove(page);
+      final route = page.route;
+      if (route.isSubRoot) {
+        final subTree = pages.getSubTrees().find(route);
+        if (subTree != null) {
+          final newRoutes = pages.removeSubTree(route);
+          onRemoveRoute?.call(this, page.route);
+          _pages = newRoutes;
+        } else {
+          dev.log("No subtree with root $route", name: runtimeType.toString());
+        }
+      } else {
+        _removePage(page, result);
+      }
     } catch (e) {
       throw Exception("Remove route aborted. \n$e");
     }
     notifyListeners();
+  }
+
+  void _removePage(AppPage page, dynamic result) {
+    onRemoveRoute?.call(this, page.route);
+    _pages.remove(page);
   }
 
   void popRoute() => removePage(currentPage, null);
