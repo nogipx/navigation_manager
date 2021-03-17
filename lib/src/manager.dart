@@ -41,7 +41,7 @@ class RouteManager with ChangeNotifier {
     Animation<double> secondaryAnimation,
   ) transitionProvider;
 
-  List<RouteSettings> _pages;
+  List<AppPage> _pages;
   List<AppPage> get pages => List.unmodifiable(_pages);
 
   RouteManager({
@@ -94,6 +94,15 @@ class RouteManager with ChangeNotifier {
       throw Exception("Remove route aborted. \n$e");
     }
     notifyListeners();
+  }
+
+  Future<void> removeRoute(AppRoute route, {dynamic data}) async {
+    final _page = _pages.lastWhere((e) => e.route == route, orElse: () => null);
+    if (_page != null) {
+      await removePage(_page, data);
+    } else {
+      dev.log("No page with $route found.");
+    }
   }
 
   void _removePage(AppPage page, dynamic result) {
