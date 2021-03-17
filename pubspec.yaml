@@ -2,7 +2,7 @@ name: navigation_manager
 description: >- 
   Navigation manager for Navigator 2.0 with a convenient declarative way 
   to define application routes.
-version: 0.0.7
+version: 0.0.8
 homepage: https://gitlab.com/nogipx/navigation_manager
 
 environment:

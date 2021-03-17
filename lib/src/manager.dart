@@ -75,7 +75,7 @@ class RouteManager with ChangeNotifier {
 
   AppPage get currentPage => pages.last;
 
-  Future<void> removePage(AppPage page, dynamic result) async {
+  void removePage(AppPage page, dynamic result) {
     try {
       final route = page.route;
       if (route.isSubRoot) {
@@ -96,23 +96,32 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> removeRoute(AppRoute route, {dynamic data}) async {
-    final _page = _pages.lastWhere((e) => e.route == route, orElse: () => null);
+  void removeRoute(AppRoute route, {dynamic data}) {
+    final _page = _getPageByRoute(route);
     if (_page != null) {
-      await removePage(_page, data);
+      removePage(_page.value, data);
     } else {
       dev.log("No page with $route found.");
     }
   }
 
-  void _removePage(AppPage page, dynamic result) {
-    onRemoveRoute?.call(this, page.route);
-    _pages.remove(page);
+  void removeUntilRoute(AppRoute route) {
+    final _page = _getPageByRoute(route);
+    if (_page != null) {
+      if (_page.key != _pages.length - 1) {
+        _pages.removeRange(_page.key + 1, _pages.length - 1);
+        notifyListeners();
+      } else {
+        notifyListeners();
+      }
+    } else {
+      dev.log("No page for $route", name: runtimeType.toString());
+    }
   }
 
   void popRoute() => removePage(currentPage, null);
 
-  Future<void> pushRoute(AppRoute route, {AppRouteArgs data}) async {
+  void pushRoute(AppRoute route, {AppRouteArgs data}) {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
@@ -170,6 +179,19 @@ class RouteManager with ChangeNotifier {
       _pages.remove(page);
       throw Exception("Push route aborted. \n$e");
     }
+  }
+
+  MapEntry<int, AppPage> _getPageByRoute(AppRoute route) {
+    final _page = _pages
+        .asMap()
+        .entries
+        .lastWhere((e) => e.value.route == route, orElse: () => null);
+    return _page;
+  }
+
+  void _removePage(AppPage page, dynamic result) {
+    onRemoveRoute?.call(this, page.route);
+    _pages.remove(page);
   }
 
   bool _shouldResetSubtree(AppRoute route) =>
