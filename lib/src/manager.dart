@@ -12,7 +12,7 @@ class RouteManager with ChangeNotifier {
   final Widget Function(RouteManager manager, AppRoute route, Widget page) pageWrapper;
 
   /// Called after pushing a route.
-  final Function(RouteManager, AppRoute) onPushRoute;
+  final bool Function(RouteManager, AppRoute) onPushRoute;
 
   /// Called before removing a route.
   final Function(RouteManager, AppRoute) onRemoveRoute;
@@ -159,9 +159,13 @@ class RouteManager with ChangeNotifier {
       transitionDuration: transitionDuration,
       reverseTransitionDuration: reverseTransitionDuration,
     );
-    _pages.add(page);
     try {
-      onPushRoute?.call(this, _route);
+      final allowPush = onPushRoute?.call(this, _route);
+      if (allowPush) {
+        _pages.add(page);
+      } else {
+        dev.log("Prevent push $_route.", name: runtimeType.toString());
+      }
     } catch (e) {
       _pages.remove(page);
       throw Exception("Push route aborted. \n$e");
