@@ -127,6 +127,11 @@ class RouteManager with ChangeNotifier {
   void popRoute() => removePage(currentPage, null);
 
   void pushRoute(AppRoute route, {AppRouteArgs data}) {
+    final _route = route.fill(data: data);
+    _performPushRoute(_route);
+  }
+
+  void _performPushRoute(AppRoute route) {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
@@ -135,26 +140,27 @@ class RouteManager with ChangeNotifier {
       final strategy = route.subRootDuplicateStrategy;
       final subTrees = _pages.getSubTrees();
       final isReallyNewRoute =
-          subTrees.map((e) => e.root.customPage.route).contains(route);
+          !subTrees.map((e) => e.root.customPage.route).contains(route);
 
       if (isReallyNewRoute) {
-        _pushRoute(route, data);
+        _actualPushRoute(route);
       } else if (currentPage.route == route) {
         switch (strategy) {
           case SubRootDuplicateStrategy.Ignore:
             log("Ignore pushing duplicate of $route.");
             break;
           case SubRootDuplicateStrategy.Append:
-            _pushRoute(route, data);
+            _actualPushRoute(route);
             break;
           default:
             log("Inapplicable $strategy for current visible route $route.");
         }
       } else {
         final visibleSubtree = subTrees.isNotEmpty ? subTrees.last : null;
-        final isPushingToCurrentSubtree = visibleSubtree.root.customPage.route == route;
 
-        if (isPushingToCurrentSubtree) {
+        if (visibleSubtree == null) {
+          _actualPushRoute(route);
+        } else if (visibleSubtree.root.customPage.route == route) {
           switch (strategy) {
             case SubRootDuplicateStrategy.Ignore:
               log("Ignore pushing duplicate of $route.");
@@ -164,7 +170,7 @@ class RouteManager with ChangeNotifier {
               _pages = newRoutes;
               break;
             case SubRootDuplicateStrategy.Append:
-              _pushRoute(route, data);
+              _actualPushRoute(route);
               break;
             default:
               log("Inapplicable $strategy for $route.");
@@ -183,7 +189,7 @@ class RouteManager with ChangeNotifier {
               _pages = newRoutes;
               break;
             case SubRootDuplicateStrategy.Append:
-              _pushRoute(route, data);
+              _actualPushRoute(route);
               break;
             default:
               log("Inapplicable $strategy for sub-tree with root $route.");
@@ -202,39 +208,38 @@ class RouteManager with ChangeNotifier {
             break;
           case DuplicateStrategy.Replace:
             removeRoute(route);
-            _pushRoute(route, data);
+            _actualPushRoute(route);
             break;
           case DuplicateStrategy.Append:
-            _pushRoute(route, data);
+            _actualPushRoute(route);
             break;
         }
       } else {
-        _pushRoute(route, data);
+        _actualPushRoute(route);
       }
     }
 
     notifyListeners();
   }
 
-  void _pushRoute(AppRoute route, AppRouteArgs data) {
-    final _route = route.fill(data: data);
+  void _actualPushRoute(AppRoute route) {
     final page = AppPage(
-      key: ObjectKey(_route),
-      route: _route,
-      name: _route.actualUri.toString(),
-      child: _getPageBuilder(routes, _route).call(data),
-      restorationId: _route.actualUri.toString(),
+      key: ObjectKey(route),
+      route: route,
+      name: route.actualUri.toString(),
+      child: _getPageBuilder(routes, route).call(route.data),
+      restorationId: route.actualUri.toString(),
       transitionProvider: transitionProvider,
       transitionDuration: transitionDuration,
       reverseTransitionDuration: reverseTransitionDuration,
     );
     try {
-      final allowPush = onPushRoute?.call(this, _route);
-      if (allowPush) {
-        _pages.add(page);
-      } else {
-        log("Prevent push $_route.");
-      }
+      onPushRoute?.call(this, route);
+      _pages.add(page);
+      // if (allowPush) {
+      // } else {
+      //   log("Prevent push $route.");
+      // }
     } catch (e) {
       _pages.remove(page);
       throw Exception("Push route aborted. \n$e");
