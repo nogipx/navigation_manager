@@ -74,6 +74,10 @@ class RouteManager with ChangeNotifier {
   }
 
   AppPage get currentPage => pages.last;
+  void log(Object message) => dev.log(
+        message.toString(),
+        name: runtimeType.toString(),
+      );
 
   void removePage(AppPage page, dynamic result) {
     try {
@@ -85,7 +89,7 @@ class RouteManager with ChangeNotifier {
           onRemoveRoute?.call(this, page.route);
           _pages = newRoutes;
         } else {
-          dev.log("No subtree with root $route", name: runtimeType.toString());
+          log("No subtree with root $route");
         }
       } else {
         _removePage(page, result);
@@ -97,25 +101,26 @@ class RouteManager with ChangeNotifier {
   }
 
   void removeRoute(AppRoute route, {dynamic data}) {
-    final _page = _getPageByRoute(route);
-    if (_page != null) {
-      removePage(_page.value, data);
+    final page = _getPageWithIndex(route);
+    if (page != null) {
+      removePage(page.value, data);
     } else {
-      dev.log("No page with $route found.");
+      log("No page with $route found.");
     }
   }
 
   void removeUntilRoute(AppRoute route) {
-    final _page = _getPageByRoute(route);
-    if (_page != null) {
-      if (_page.key != _pages.length - 1) {
-        _pages.removeRange(_page.key + 1, _pages.length - 1);
+    final page = _getPageWithIndex(route);
+    if (page != null) {
+      final lastPageIndex = _pages.length - 1;
+      if (page.key != lastPageIndex) {
+        _pages.removeRange(page.key + 1, lastPageIndex);
         notifyListeners();
       } else {
         notifyListeners();
       }
     } else {
-      dev.log("No page for $route", name: runtimeType.toString());
+      log("No page for $route");
     }
   }
 
@@ -126,37 +131,92 @@ class RouteManager with ChangeNotifier {
     if (route == null) {
       throw Exception("Null route is not allowed.");
     }
-    final _route = route.fill(data: data);
-
-    // If pushed route is sub-root then find nearest sub-route
-    // It could be identical - choose strategy (keep or reset)
-    // Or it could be different - then switch sub tree
     if (route.isSubRoot) {
-      final subTree = pages.getSubTrees().find(route);
-      if (subTree != null) {
-        final needReset = _shouldResetSubtree(route);
-        final newRoutes = pages.subTreeMovedDown(route, reset: needReset);
-        _pages = newRoutes;
+      final strategy = route.subRootDuplicateStrategy;
+      final subTrees = _pages.getSubTrees();
+      final isReallyNewRoute =
+          subTrees.map((e) => e.root.customPage.route).contains(route);
+
+      if (isReallyNewRoute) {
+        _pushRoute(route, data);
+      } else if (currentPage.route == route) {
+        switch (strategy) {
+          case SubRootDuplicateStrategy.Ignore:
+            log("Ignore pushing duplicate of $route.");
+            break;
+          case SubRootDuplicateStrategy.Append:
+            _pushRoute(route, data);
+            break;
+          default:
+            log("Inapplicable $strategy for current visible route $route.");
+        }
       } else {
-        _pushRoute(route, data: data);
+        final visibleSubtree = subTrees.isNotEmpty ? subTrees.last : null;
+        final isPushingToCurrentSubtree = visibleSubtree.root.customPage.route == route;
+
+        if (isPushingToCurrentSubtree) {
+          switch (strategy) {
+            case SubRootDuplicateStrategy.Ignore:
+              log("Ignore pushing duplicate of $route.");
+              break;
+            case SubRootDuplicateStrategy.Reset:
+              final newRoutes = pages.subTreeMovedDown(route, reset: false);
+              _pages = newRoutes;
+              break;
+            case SubRootDuplicateStrategy.Append:
+              _pushRoute(route, data);
+              break;
+            default:
+              log("Inapplicable $strategy for $route.");
+          }
+        } else {
+          switch (strategy) {
+            case SubRootDuplicateStrategy.Ignore:
+              log("Ignore pushing duplicate of $route.");
+              break;
+            case SubRootDuplicateStrategy.MakeVisible:
+              final newRoutes = pages.subTreeMovedDown(route, reset: false);
+              _pages = newRoutes;
+              break;
+            case SubRootDuplicateStrategy.MakeVisibleAndReset:
+              final newRoutes = pages.subTreeMovedDown(route, reset: true);
+              _pages = newRoutes;
+              break;
+            case SubRootDuplicateStrategy.Append:
+              _pushRoute(route, data);
+              break;
+            default:
+              log("Inapplicable $strategy for sub-tree with root $route.");
+          }
+        }
       }
     }
 
     // If new route is not sub root then just push it.
     else {
-      if (currentPage.route == _route) {
-        if (_shouldPushSameRoute(_route)) {
-          _pushRoute(_route, data: data);
+      if (currentPage.route == route) {
+        final strategy = route.duplicateStrategy;
+        switch (strategy) {
+          case DuplicateStrategy.Ignore:
+            log("Ignore pushing duplicate of $route");
+            break;
+          case DuplicateStrategy.Replace:
+            removeRoute(route);
+            _pushRoute(route, data);
+            break;
+          case DuplicateStrategy.Append:
+            _pushRoute(route, data);
+            break;
         }
       } else {
-        _pushRoute(_route, data: data);
+        _pushRoute(route, data);
       }
     }
 
     notifyListeners();
   }
 
-  void _pushRoute(AppRoute route, {AppRouteArgs data}) {
+  void _pushRoute(AppRoute route, AppRouteArgs data) {
     final _route = route.fill(data: data);
     final page = AppPage(
       key: ObjectKey(_route),
@@ -173,7 +233,7 @@ class RouteManager with ChangeNotifier {
       if (allowPush) {
         _pages.add(page);
       } else {
-        dev.log("Prevent push $_route.", name: runtimeType.toString());
+        log("Prevent push $_route.");
       }
     } catch (e) {
       _pages.remove(page);
@@ -181,7 +241,7 @@ class RouteManager with ChangeNotifier {
     }
   }
 
-  MapEntry<int, AppPage> _getPageByRoute(AppRoute route) {
+  MapEntry<int, AppPage> _getPageWithIndex(AppRoute route) {
     final _page = _pages
         .asMap()
         .entries
@@ -209,7 +269,7 @@ class RouteManager with ChangeNotifier {
     Widget Function(AppRouteArgs data) _pageBuilder = routes[route];
 
     if (_pageBuilder == null) {
-      dev.log("No page builder for $route", name: runtimeType.toString());
+      log("No page builder for $route");
 
       final _unknownRoute = onUnknownRoute(route)?.fill(data: route.data);
       if (routes.containsKey(_unknownRoute)) {

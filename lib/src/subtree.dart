@@ -44,7 +44,7 @@ extension PageList on List<AppPage> {
 
   List<AppPage> subTreeMovedDown(AppRoute route, {bool reset = false}) {
     final subTree = getSubTrees().find(route);
-    if (subTree != null) {
+    if (subTree != null && subTree.endPosition != length - 1) {
       final newRoutes = List.of(this)
         ..removeRange(subTree.startPosition, subTree.endPosition + 1);
       if (reset) {

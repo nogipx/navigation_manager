@@ -5,10 +5,16 @@ abstract class AppRouteArgs {
   Map<String, dynamic> toJson();
 }
 
+enum DuplicateStrategy { Ignore, Replace, Append }
+
+enum SubRootDuplicateStrategy { Ignore, Reset, MakeVisibleAndReset, MakeVisible, Append }
+
 // ignore: must_be_immutable
 class AppRoute<Args extends AppRouteArgs> extends Equatable {
   final String template;
   final Args data;
+  final DuplicateStrategy duplicateStrategy;
+  final SubRootDuplicateStrategy subRootDuplicateStrategy;
 
   UriTemplate _uriTemplate;
   UriTemplate get uriTemplate => _uriTemplate;
@@ -20,16 +26,32 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
   // ignore: unused_field
   int _uniqField;
 
-  AppRoute(this.template, {this.actualUri, this.data}) {
+  AppRoute(
+    this.template, {
+    this.actualUri,
+    this.data,
+    this.duplicateStrategy = DuplicateStrategy.Ignore,
+  }) : subRootDuplicateStrategy = null {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
   }
 
-  AppRoute.subroot(this.template, {this.actualUri, this.data}) {
+  AppRoute.subroot(
+    this.template, {
+    this.actualUri,
+    this.data,
+    SubRootDuplicateStrategy duplicateStrategy = SubRootDuplicateStrategy.MakeVisible,
+  })  : duplicateStrategy = null,
+        subRootDuplicateStrategy = duplicateStrategy {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = true;
   }
-  AppRoute.uniq(this.template, {this.actualUri, this.data}) {
+  AppRoute.uniq(
+    this.template, {
+    this.actualUri,
+    this.data,
+    this.duplicateStrategy = DuplicateStrategy.Ignore,
+  }) : subRootDuplicateStrategy = null {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
     _uniqField = DateTime.now().millisecondsSinceEpoch;
@@ -63,6 +85,6 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
   List<Object> get props => [template, _uniqField];
 
   @override
-  String toString() => "${isSubRoot ? 'SubRoot ' : ''}AppRoute "
-      "{ template: $template, actualUri: $actualUri, data: $data }";
+  String toString() => "${isSubRoot ? 'SubRoot ' : ''}AppRoute"
+      "(template: $template, actualUri: $actualUri, data: $data)";
 }
