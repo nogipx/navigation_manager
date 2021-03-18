@@ -165,6 +165,9 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.Ignore:
               log("Ignore pushing duplicate of $route.");
               break;
+            case SubRootDuplicateStrategy.MakeVisible:
+              log("Sub-tree with root $route is already visible.");
+              break;
             case SubRootDuplicateStrategy.MakeVisibleOrReset:
               final newRoutes = pages.subTreeMovedDown(route, reset: true);
               _pages = newRoutes;
@@ -172,9 +175,6 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
               break;
-            default:
-              log("Inapplicable $strategy for current "
-                  "visible sub-tree with root $route.");
           }
         } else {
           switch (strategy) {
@@ -192,8 +192,6 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
               break;
-            default:
-              log("Inapplicable $strategy for sub-tree with root $route.");
           }
         }
       }
