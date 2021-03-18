@@ -5,6 +5,7 @@ import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
 
 class RouteManager with ChangeNotifier {
+  final bool debugging;
   final AppRoute initialRoute;
   final AppRouteArgs initialRouteArgs;
   final AppRoute Function(AppRoute route) onUnknownRoute;
@@ -48,6 +49,7 @@ class RouteManager with ChangeNotifier {
     @required this.initialRoute,
     @required this.routes,
     @required this.onUnknownRoute,
+    this.debugging = false,
     this.initialRouteArgs,
     this.pageWrapper,
     this.onPushRoute,
@@ -74,10 +76,8 @@ class RouteManager with ChangeNotifier {
   }
 
   AppPage get currentPage => pages.last;
-  void log(Object message) => dev.log(
-        message.toString(),
-        name: runtimeType.toString(),
-      );
+  void log(Object message) =>
+      debugging ? dev.log(message.toString(), name: runtimeType.toString()) : null;
 
   void removePage(AppPage page, dynamic result) {
     try {
@@ -147,13 +147,17 @@ class RouteManager with ChangeNotifier {
       } else if (currentPage.route == route) {
         switch (strategy) {
           case SubRootDuplicateStrategy.Ignore:
-            log("Ignore pushing duplicate of $route.");
+            log("[$strategy] Ignore pushing duplicate of $route.");
             break;
           case SubRootDuplicateStrategy.Append:
             _actualPushRoute(route);
             break;
-          default:
-            log("Inapplicable $strategy for current visible route $route.");
+          case SubRootDuplicateStrategy.MakeVisibleOrReset:
+            log("[$strategy] Pushed $route is the same with current visible.");
+            break;
+          case SubRootDuplicateStrategy.MakeVisible:
+            log("[$strategy] Pushed $route is the same with current visible.");
+            break;
         }
       } else {
         final visibleSubtree = subTrees.isNotEmpty ? subTrees.last : null;
@@ -163,10 +167,10 @@ class RouteManager with ChangeNotifier {
         } else if (visibleSubtree.root.customPage.route == route) {
           switch (strategy) {
             case SubRootDuplicateStrategy.Ignore:
-              log("Ignore pushing duplicate of $route.");
+              log("[$strategy] Ignore pushing duplicate of $route.");
               break;
             case SubRootDuplicateStrategy.MakeVisible:
-              log("Sub-tree with root $route is already visible.");
+              log("[$strategy] Sub-tree with root $route is already visible.");
               break;
             case SubRootDuplicateStrategy.MakeVisibleOrReset:
               final newRoutes = pages.subTreeMovedDown(route, reset: true);
@@ -179,7 +183,7 @@ class RouteManager with ChangeNotifier {
         } else {
           switch (strategy) {
             case SubRootDuplicateStrategy.Ignore:
-              log("Ignore pushing duplicate of $route.");
+              log("[$strategy] Ignore pushing duplicate of $route.");
               break;
             case SubRootDuplicateStrategy.MakeVisible:
               final newRoutes = pages.subTreeMovedDown(route, reset: false);
