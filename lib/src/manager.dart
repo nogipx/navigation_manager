@@ -165,15 +165,16 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.Ignore:
               log("Ignore pushing duplicate of $route.");
               break;
-            case SubRootDuplicateStrategy.Reset:
-              final newRoutes = pages.subTreeMovedDown(route, reset: false);
+            case SubRootDuplicateStrategy.MakeVisibleOrReset:
+              final newRoutes = pages.subTreeMovedDown(route, reset: true);
               _pages = newRoutes;
               break;
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
               break;
             default:
-              log("Inapplicable $strategy for $route.");
+              log("Inapplicable $strategy for current "
+                  "visible sub-tree with root $route.");
           }
         } else {
           switch (strategy) {
@@ -184,8 +185,8 @@ class RouteManager with ChangeNotifier {
               final newRoutes = pages.subTreeMovedDown(route, reset: false);
               _pages = newRoutes;
               break;
-            case SubRootDuplicateStrategy.MakeVisibleAndReset:
-              final newRoutes = pages.subTreeMovedDown(route, reset: true);
+            case SubRootDuplicateStrategy.MakeVisibleOrReset:
+              final newRoutes = pages.subTreeMovedDown(route, reset: false);
               _pages = newRoutes;
               break;
             case SubRootDuplicateStrategy.Append:

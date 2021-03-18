@@ -7,7 +7,7 @@ abstract class AppRouteArgs {
 
 enum DuplicateStrategy { Ignore, Replace, Append }
 
-enum SubRootDuplicateStrategy { Ignore, Reset, MakeVisibleAndReset, MakeVisible, Append }
+enum SubRootDuplicateStrategy { Ignore, MakeVisibleOrReset, MakeVisible, Append }
 
 // ignore: must_be_immutable
 class AppRoute<Args extends AppRouteArgs> extends Equatable {
@@ -15,6 +15,7 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
   final Args data;
   final DuplicateStrategy duplicateStrategy;
   final SubRootDuplicateStrategy subRootDuplicateStrategy;
+  final bool resetChildrenOnDuplicate;
 
   UriTemplate _uriTemplate;
   UriTemplate get uriTemplate => _uriTemplate;
@@ -31,7 +32,8 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
     this.actualUri,
     this.data,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-  }) : subRootDuplicateStrategy = null {
+  })  : subRootDuplicateStrategy = null,
+        resetChildrenOnDuplicate = null {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
   }
@@ -40,6 +42,7 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
     this.template, {
     this.actualUri,
     this.data,
+    this.resetChildrenOnDuplicate = false,
     SubRootDuplicateStrategy duplicateStrategy = SubRootDuplicateStrategy.MakeVisible,
   })  : duplicateStrategy = null,
         subRootDuplicateStrategy = duplicateStrategy {
@@ -51,7 +54,8 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
     this.actualUri,
     this.data,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-  }) : subRootDuplicateStrategy = null {
+  })  : subRootDuplicateStrategy = null,
+        resetChildrenOnDuplicate = null {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
     _uniqField = DateTime.now().millisecondsSinceEpoch;
