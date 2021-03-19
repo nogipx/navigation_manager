@@ -9,7 +9,6 @@ class RouteManager with ChangeNotifier {
   final AppRoute initialRoute;
   final AppRouteArgs initialRouteArgs;
   final AppRoute Function(AppRoute route) onUnknownRoute;
-  final Map<AppRoute, Widget Function(AppRouteArgs data)> routes;
   final Widget Function(RouteManager manager, AppRoute route, Widget page) pageWrapper;
 
   /// Called after pushing a route.
@@ -47,7 +46,6 @@ class RouteManager with ChangeNotifier {
 
   RouteManager({
     @required this.initialRoute,
-    @required this.routes,
     @required this.onUnknownRoute,
     this.debugging = false,
     this.initialRouteArgs,
@@ -59,13 +57,13 @@ class RouteManager with ChangeNotifier {
     this.transitionProvider,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) : assert(routes != null && onUnknownRoute != null && initialRoute != null) {
+  }) : assert(onUnknownRoute != null && initialRoute != null) {
     final _initRoute = initialRoute.fill();
     _pages = [
       AppPage(
         key: ObjectKey(_initRoute),
         route: _initRoute,
-        child: _getPageBuilder(routes, _initRoute).call(initialRouteArgs),
+        child: _getPageBuilder(_initRoute).call(initialRouteArgs),
         name: _initRoute.actualUri.toString(),
         restorationId: _initRoute.template,
         transitionProvider: transitionProvider,
@@ -75,7 +73,7 @@ class RouteManager with ChangeNotifier {
     ];
   }
 
-  AppPage get currentPage => pages.last;
+  AppPage get currentPage => pages.isNotEmpty ? pages.last : null;
   void log(Object message) =>
       debugging ? dev.log(message.toString(), name: runtimeType.toString()) : null;
 
@@ -126,12 +124,12 @@ class RouteManager with ChangeNotifier {
 
   void popRoute() => removePage(currentPage, null);
 
-  void pushRoute(AppRoute route, {AppRouteArgs data}) {
+  void pushRoute<A extends AppRouteArgs>(AppRoute<A> route, {A data}) {
     final _route = route.fill(data: data);
     _performPushRoute(_route);
   }
 
-  void _performPushRoute(AppRoute route) {
+  void _performPushRoute<A extends AppRouteArgs>(AppRoute<A> route) {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
@@ -225,12 +223,12 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
-  void _actualPushRoute(AppRoute route) {
+  void _actualPushRoute<A extends AppRouteArgs>(AppRoute<A> route) {
     final page = AppPage(
       key: ObjectKey(route),
       route: route,
       name: route.actualUri.toString(),
-      child: _getPageBuilder(routes, route).call(route.data),
+      child: _getPageBuilder(route).call(route.data),
       restorationId: route.actualUri.toString(),
       transitionProvider: transitionProvider,
       transitionDuration: transitionDuration,
@@ -256,33 +254,17 @@ class RouteManager with ChangeNotifier {
 
   /// Returns page builder function defined in mapping.
   /// If route is unknown, then ask for redirection route.
-  Widget Function(AppRouteArgs data) _getPageBuilder(
-    Map<AppRoute, Widget Function(AppRouteArgs data)> routes,
-    AppRoute route,
-  ) {
-    Widget Function(AppRouteArgs data) _pageBuilder = routes[route];
-
-    if (_pageBuilder == null) {
-      log("No page builder for $route");
-
-      final _unknownRoute = onUnknownRoute(route)?.fill(data: route.data);
-      if (routes.containsKey(_unknownRoute)) {
-        _pageBuilder = routes[_unknownRoute];
+  Widget Function(A data) _getPageBuilder<A extends AppRouteArgs>(AppRoute<A> route) {
+    if (route.builder != null) {
+      if (pageWrapper != null) {
+        return (A data) {
+          return pageWrapper.call(this, route, route.builder.call(data));
+        };
+      } else {
+        return route.builder;
       }
-
-      if (_pageBuilder == null) {
-        throw Exception(
-          "Push route aborted. No page builder for 'unknown' $_unknownRoute",
-        );
-      }
-    }
-
-    if (pageWrapper != null) {
-      return (AppRouteArgs data) {
-        return pageWrapper.call(this, route, _pageBuilder.call(data));
-      };
     } else {
-      return _pageBuilder;
+      throw ArgumentError.notNull('builder');
     }
   }
 }

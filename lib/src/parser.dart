@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uri/uri.dart';
 
 class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
+  final bool debugging;
   final List<AppRoute> routes;
   final AppRoute initialRoute;
   final AppRoute unknownRoute;
@@ -14,10 +15,14 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
   AppRouteInformationParser({
     @required this.routes,
     @required this.unknownRoute,
+    this.debugging = false,
     this.initialRoute,
     this.transformUri,
     this.onExternalRoute,
   });
+
+  void log(Object message) =>
+      debugging ? dev.log(message.toString(), name: runtimeType.toString()) : null;
 
   @override
   Future<AppRoute> parseRouteInformation(RouteInformation routeInformation) async {
@@ -27,7 +32,7 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
     if (routeInformation.location == "/") {
       return initialRoute ??
           routes.singleWhere((e) => e.template == "/", orElse: () {
-            dev.log("No initial route provided.");
+            log("No initial route provided.");
             return unknownRoute;
           });
     } else {
@@ -37,17 +42,12 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
           .where((e) => UriParser(e.uriTemplate).matches(_uri))
           .toList();
       if (matchedRoutes.isEmpty) {
-        dev.log(
-          "No match for system route: '$_uri'",
-          name: runtimeType.toString(),
-        );
+        log("No match for system route: '$_uri'");
         return unknownRoute;
       } else {
         if (matchedRoutes.length > 1) {
-          dev.log(
-            "Few routes(${matchedRoutes.length}) has matched to '$_uri'. Last will be used.",
-            name: runtimeType.toString(),
-          );
+          log("Few routes(${matchedRoutes.length}) "
+              "has matched to '$_uri'. Last will be used.");
         }
         final route = matchedRoutes.last;
         return route.fill(rawData: UriParser(route.uriTemplate).parse(_uri));

@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 import 'package:uri/uri.dart';
 
 abstract class AppRouteArgs {
@@ -10,12 +11,12 @@ enum DuplicateStrategy { Ignore, Replace, Append }
 enum SubRootDuplicateStrategy { Ignore, MakeVisibleOrReset, MakeVisible, Append }
 
 // ignore: must_be_immutable
-class AppRoute<Args extends AppRouteArgs> extends Equatable {
+class AppRoute<A extends AppRouteArgs> extends Equatable {
   final String template;
-  final Args data;
+  final A data;
   final DuplicateStrategy duplicateStrategy;
   final SubRootDuplicateStrategy subRootDuplicateStrategy;
-  final bool resetChildrenOnDuplicate;
+  final Widget Function(AppRouteArgs) builder;
 
   UriTemplate _uriTemplate;
   UriTemplate get uriTemplate => _uriTemplate;
@@ -28,21 +29,21 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
   int _uniqField;
 
   AppRoute(
-    this.template, {
+    this.template,
+    this.builder, {
     this.actualUri,
     this.data,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-  })  : subRootDuplicateStrategy = null,
-        resetChildrenOnDuplicate = null {
+  }) : subRootDuplicateStrategy = null {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
   }
 
   AppRoute.subroot(
-    this.template, {
+    this.template,
+    this.builder, {
     this.actualUri,
     this.data,
-    this.resetChildrenOnDuplicate = false,
     SubRootDuplicateStrategy duplicateStrategy = SubRootDuplicateStrategy.MakeVisible,
   })  : duplicateStrategy = null,
         subRootDuplicateStrategy = duplicateStrategy {
@@ -50,28 +51,30 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
     _isSubRoot = true;
   }
   AppRoute.uniq(
-    this.template, {
+    this.template,
+    this.builder, {
     this.actualUri,
     this.data,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-  })  : subRootDuplicateStrategy = null,
-        resetChildrenOnDuplicate = null {
+  }) : subRootDuplicateStrategy = null {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
     _uniqField = DateTime.now().millisecondsSinceEpoch;
   }
 
-  AppRoute copyWith({Uri actualUri, Args data}) {
+  AppRoute copyWith({Uri actualUri, A data}) {
     if (isSubRoot) {
-      return AppRoute<Args>.subroot(
+      return AppRoute<A>.subroot(
         template,
+        builder,
         actualUri: actualUri ?? this.actualUri,
         data: data,
         duplicateStrategy: subRootDuplicateStrategy,
       );
     } else {
-      return AppRoute<Args>(
+      return AppRoute<A>(
         template,
+        builder,
         actualUri: actualUri ?? this.actualUri,
         data: data,
         duplicateStrategy: duplicateStrategy,
@@ -79,7 +82,7 @@ class AppRoute<Args extends AppRouteArgs> extends Equatable {
     }
   }
 
-  AppRoute fill({Args data, Map<String, dynamic> rawData}) {
+  AppRoute fill({A data, Map<String, dynamic> rawData}) {
     final _data = data?.toJson() ?? rawData ?? <String, dynamic>{};
     return copyWith(
       actualUri: UriParser(uriTemplate).expand(_data),
