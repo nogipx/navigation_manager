@@ -108,7 +108,7 @@ class AppRoute extends Equatable {
     if (data != null && data.isNotEmpty) {
       return copyWith(
         actualUri: UriParser(uriTemplate).expand(data),
-        data: this.data..addAll(data),
+        data: (this.data ?? <String, dynamic>{})..addAll(data),
       );
     } else {
       return this;
