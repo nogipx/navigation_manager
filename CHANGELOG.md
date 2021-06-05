@@ -3,6 +3,11 @@
 * Create navigation manager which provides convenient declarative way
 to define app routes
 
+## [0.0.11] - 24 March 2021
+
+* Remove generic argument inside routes. Use simple json.
+* Add documentation about duplcation strategy.
+
 ## [0.0.9] - 24 March 2021
 
 * Add route duplicating strategies

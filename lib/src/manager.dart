@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 
 class RouteManager with ChangeNotifier {
   final bool debugging;
+
   final AppRoute initialRoute;
-  final AppRouteArgs initialRouteArgs;
+  final Map<String, dynamic> initialRouteArgs;
   final AppRoute Function(AppRoute route) onUnknownRoute;
-  final Widget Function(RouteManager manager, AppRoute route, Widget page) pageWrapper;
+  final Widget Function(RouteManager manager, AppRoute route, Widget page)
+      pageWrapper;
 
   /// Called after pushing a route.
   final bool Function(RouteManager, AppRoute) onPushRoute;
@@ -18,16 +20,9 @@ class RouteManager with ChangeNotifier {
   final Function(RouteManager, AppRoute) onRemoveRoute;
 
   /// Called when pushed route is the same with current.
-  /// If `onDoublePushRoute` returns `true` then route will be pushed.
-  /// Otherwise if returns `false` then prevents push.
-  /// Returns `false` by default.
   final bool Function(RouteManager, AppRoute) onDoublePushRoute;
 
   /// Called when pushed route is the same with current and route is root.
-  /// If `onDoublePushSubRootRoute` returns `true`
-  /// then other routes after pushed route will be deleted.
-  /// Otherwise if returns `false` then prevent push, that is, does nothing.
-  /// Returns `false` by default.
   final bool Function(RouteManager, AppRoute) onDoublePushSubRootRoute;
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -43,6 +38,11 @@ class RouteManager with ChangeNotifier {
 
   List<AppPage> _pages;
   List<AppPage> get pages => List.unmodifiable(_pages);
+  List<AppRoute> get routes =>
+      List.unmodifiable(pages.map<AppRoute>((e) => e.route));
+
+  AppPage get _currentPage => pages.isNotEmpty ? pages.last : null;
+  AppRoute get currentRoute => _currentPage?.route;
 
   RouteManager({
     @required this.initialRoute,
@@ -73,9 +73,9 @@ class RouteManager with ChangeNotifier {
     ];
   }
 
-  AppPage get currentPage => pages.isNotEmpty ? pages.last : null;
-  void log(Object message) =>
-      debugging ? dev.log(message.toString(), name: runtimeType.toString()) : null;
+  void log(Object message) => debugging
+      ? dev.log(message.toString(), name: runtimeType.toString())
+      : null;
 
   void removePage(AppPage page, dynamic result) {
     try {
@@ -90,7 +90,7 @@ class RouteManager with ChangeNotifier {
           log("No subtree with root $route");
         }
       } else {
-        _removePage(page, result);
+        _actualRemovePage(page, result);
       }
     } catch (e) {
       throw Exception("Remove route aborted. \n$e");
@@ -98,7 +98,7 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
-  void removeRoute(AppRoute route, {dynamic data}) {
+  void remove(AppRoute route, {dynamic data}) {
     final page = pages.getPageWithIndex(route);
     if (page != null) {
       removePage(page.value, data);
@@ -107,7 +107,7 @@ class RouteManager with ChangeNotifier {
     }
   }
 
-  void removeUntilRoute(AppRoute route) {
+  void removeUntil(AppRoute route) {
     final page = pages.getPageWithIndex(route);
     if (page != null) {
       final lastPageIndex = _pages.length - 1;
@@ -122,14 +122,14 @@ class RouteManager with ChangeNotifier {
     }
   }
 
-  void popRoute() => removePage(currentPage, null);
+  void pop() => removePage(_currentPage, null);
 
-  void pushRoute<A extends AppRouteArgs>(AppRoute<A> route, {A data}) {
+  void push(AppRoute route, {Map<String, dynamic> data}) {
     final _route = route.fill(data: data);
     _performPushRoute(_route);
   }
 
-  void _performPushRoute<A extends AppRouteArgs>(AppRoute<A> route) {
+  void _performPushRoute(AppRoute route) {
     assert(route != null);
     if (route == null) {
       throw Exception("Null route is not allowed.");
@@ -142,7 +142,7 @@ class RouteManager with ChangeNotifier {
 
       if (isReallyNewRoute) {
         _actualPushRoute(route);
-      } else if (currentPage.route == route) {
+      } else if (_currentPage.route == route) {
         switch (strategy) {
           case SubRootDuplicateStrategy.Ignore:
             log("[$strategy] Ignore pushing duplicate of $route.");
@@ -201,14 +201,14 @@ class RouteManager with ChangeNotifier {
 
     // If new route is not sub root then just push it.
     else {
-      if (currentPage.route == route) {
+      if (_currentPage.route == route) {
         final strategy = route.duplicateStrategy;
         switch (strategy) {
           case DuplicateStrategy.Ignore:
             log("Ignore pushing duplicate of $route");
             break;
           case DuplicateStrategy.Replace:
-            removeRoute(route);
+            remove(route);
             _actualPushRoute(route);
             break;
           case DuplicateStrategy.Append:
@@ -223,7 +223,7 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
-  void _actualPushRoute<A extends AppRouteArgs>(AppRoute<A> route) {
+  void _actualPushRoute(AppRoute route) {
     final page = AppPage(
       key: ObjectKey(route),
       route: route,
@@ -237,27 +237,23 @@ class RouteManager with ChangeNotifier {
     try {
       onPushRoute?.call(this, route);
       _pages.add(page);
-      // if (allowPush) {
-      // } else {
-      //   log("Prevent push $route.");
-      // }
     } catch (e) {
       _pages.remove(page);
       throw Exception("Push route aborted. \n$e");
     }
   }
 
-  void _removePage(AppPage page, dynamic result) {
+  void _actualRemovePage(AppPage page, dynamic result) {
     onRemoveRoute?.call(this, page.route);
     _pages.remove(page);
   }
 
   /// Returns page builder function defined in mapping.
-  /// If route is unknown, then ask for redirection route.
-  Widget Function(A data) _getPageBuilder<A extends AppRouteArgs>(AppRoute<A> route) {
+  /// If route has not builder, throws [ArgumentError].
+  Widget Function(Map<String, dynamic> data) _getPageBuilder(AppRoute route) {
     if (route.builder != null) {
       if (pageWrapper != null) {
-        return (A data) {
+        return (Map<String, dynamic> data) {
           return pageWrapper.call(this, route, route.builder.call(data));
         };
       } else {

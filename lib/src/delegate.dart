@@ -28,7 +28,8 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
           try {
             routeManager.removePage(route.settings as AppPage, result);
           } catch (e) {
-            dev.log("[${route.settings.name}] $e", name: runtimeType.toString());
+            dev.log("[${route.settings.name}] $e",
+                name: runtimeType.toString());
           }
         }
         return true;
@@ -39,7 +40,7 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
 
   @override
   Future<void> setNewRoutePath(AppRoute configuration) async =>
-      await routeManager.pushRoute(configuration);
+      await routeManager.push(configuration);
 
   @override
   GlobalKey<NavigatorState> get navigatorKey => routeManager.navigatorKey;

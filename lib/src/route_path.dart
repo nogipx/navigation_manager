@@ -2,21 +2,42 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:uri/uri.dart';
 
-abstract class AppRouteArgs {
-  Map<String, dynamic> toJson();
+enum DuplicateStrategy {
+  /// Ignore pushing route.
+  Ignore,
+
+  /// Replace current route with pushed.
+  Replace,
+
+  /// Just push route.
+  Append,
 }
 
-enum DuplicateStrategy { Ignore, Replace, Append }
+enum SubRootDuplicateStrategy {
+  /// Ignore pushing duplicate sub-root route.
+  Ignore,
 
-enum SubRootDuplicateStrategy { Ignore, MakeVisibleOrReset, MakeVisible, Append }
+  /// If pushed route type already exists in routes list
+  /// and it's not last sub-root, then make it visible,
+  /// else reset sub-tree children.
+  MakeVisibleOrReset,
+
+  /// If pushed route type already exists in routes list
+  /// and it's not last sub-root, then make it visible.
+  MakeVisible,
+
+  /// Just push route.
+  Append
+}
 
 // ignore: must_be_immutable
-class AppRoute<A extends AppRouteArgs> extends Equatable {
-  final String template;
-  final A data;
+class AppRoute extends Equatable {
   final DuplicateStrategy duplicateStrategy;
   final SubRootDuplicateStrategy subRootDuplicateStrategy;
-  final Widget Function(AppRouteArgs) builder;
+
+  final String template;
+  final Map<String, dynamic> data;
+  final Widget Function(Map<String, dynamic> data) builder;
 
   UriTemplate _uriTemplate;
   UriTemplate get uriTemplate => _uriTemplate;
@@ -44,7 +65,8 @@ class AppRoute<A extends AppRouteArgs> extends Equatable {
     this.builder, {
     this.actualUri,
     this.data,
-    SubRootDuplicateStrategy duplicateStrategy = SubRootDuplicateStrategy.MakeVisible,
+    SubRootDuplicateStrategy duplicateStrategy =
+        SubRootDuplicateStrategy.MakeVisible,
   })  : duplicateStrategy = null,
         subRootDuplicateStrategy = duplicateStrategy {
     _uriTemplate = UriTemplate(template);
@@ -62,9 +84,9 @@ class AppRoute<A extends AppRouteArgs> extends Equatable {
     _uniqField = DateTime.now().millisecondsSinceEpoch;
   }
 
-  AppRoute copyWith({Uri actualUri, A data}) {
+  AppRoute copyWith({Uri actualUri, Map<String, dynamic> data}) {
     if (isSubRoot) {
-      return AppRoute<A>.subroot(
+      return AppRoute.subroot(
         template,
         builder,
         actualUri: actualUri ?? this.actualUri,
@@ -72,7 +94,7 @@ class AppRoute<A extends AppRouteArgs> extends Equatable {
         duplicateStrategy: subRootDuplicateStrategy,
       );
     } else {
-      return AppRoute<A>(
+      return AppRoute(
         template,
         builder,
         actualUri: actualUri ?? this.actualUri,
@@ -82,10 +104,9 @@ class AppRoute<A extends AppRouteArgs> extends Equatable {
     }
   }
 
-  AppRoute fill({A data, Map<String, dynamic> rawData}) {
-    final _data = data?.toJson() ?? rawData ?? <String, dynamic>{};
+  AppRoute fill({Map<String, dynamic> data}) {
     return copyWith(
-      actualUri: UriParser(uriTemplate).expand(_data),
+      actualUri: UriParser(uriTemplate).expand(data),
       data: data,
     );
   }

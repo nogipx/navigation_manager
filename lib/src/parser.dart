@@ -21,11 +21,13 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
     this.onExternalRoute,
   });
 
-  void log(Object message) =>
-      debugging ? dev.log(message.toString(), name: runtimeType.toString()) : null;
+  void log(Object message) => debugging
+      ? dev.log(message.toString(), name: runtimeType.toString())
+      : null;
 
   @override
-  Future<AppRoute> parseRouteInformation(RouteInformation routeInformation) async {
+  Future<AppRoute> parseRouteInformation(
+      RouteInformation routeInformation) async {
     final _initialUri = Uri.parse(routeInformation.location);
     final _uri = transformUri?.call(_initialUri) ?? _initialUri;
 
@@ -50,7 +52,7 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
               "has matched to '$_uri'. Last will be used.");
         }
         final route = matchedRoutes.last;
-        return route.fill(rawData: UriParser(route.uriTemplate).parse(_uri));
+        return route.fill(data: UriParser(route.uriTemplate).parse(_uri));
       }
     }
   }
