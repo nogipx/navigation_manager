@@ -2,10 +2,12 @@ import 'package:navigation_manager/navigation_manager.dart';
 
 enum RouteActionType { PUSH, REMOVE, DOUBLE }
 
-typedef RouteObserverCallback = Function(AppRoute, [RouteActionType]);
+typedef RouteObserverCallback = void Function(AppRoute, [RouteActionType]);
 
-abstract class AppRouteObserver {
-  RouteObserverCallback get onRouteChange;
+class AppRouteObserver {
+  final RouteObserverCallback onRouteChange;
+
+  const AppRouteObserver(this.onRouteChange);
 
   void notifyRemove(AppRoute route) =>
       _safeRun(() => onRouteChange?.call(route, RouteActionType.REMOVE));
