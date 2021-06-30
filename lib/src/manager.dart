@@ -3,29 +3,19 @@ import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:navigation_manager/src/observer.dart';
 
 class RouteManager with ChangeNotifier {
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   final bool debugging;
+  static AppRouteObserver observer;
 
   final AppRoute initialRoute;
   final Map<String, dynamic> initialRouteArgs;
   final AppRoute Function(AppRoute route) onUnknownRoute;
   final Widget Function(RouteManager manager, AppRoute route, Widget page)
       pageWrapper;
-
-  /// Called after pushing a route.
-  final bool Function(RouteManager, AppRoute) onPushRoute;
-
-  /// Called before removing a route.
-  final Function(RouteManager, AppRoute) onRemoveRoute;
-
-  /// Called when pushed route is the same with current.
-  final bool Function(RouteManager, AppRoute) onDoublePushRoute;
-
-  /// Called when pushed route is the same with current and route is root.
-  final bool Function(RouteManager, AppRoute) onDoublePushSubRootRoute;
-
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   final Duration transitionDuration;
   final Duration reverseTransitionDuration;
@@ -37,12 +27,6 @@ class RouteManager with ChangeNotifier {
   ) transitionProvider;
 
   List<AppPage> _pages;
-  List<AppPage> get pages => List.unmodifiable(_pages);
-  List<AppRoute> get routes =>
-      List.unmodifiable(pages.map<AppRoute>((e) => e.route));
-
-  AppPage get _currentPage => pages.isNotEmpty ? pages.last : null;
-  AppRoute get currentRoute => _currentPage?.route;
 
   RouteManager({
     @required this.initialRoute,
@@ -50,10 +34,6 @@ class RouteManager with ChangeNotifier {
     this.debugging = false,
     this.initialRouteArgs,
     this.pageWrapper,
-    this.onPushRoute,
-    this.onRemoveRoute,
-    this.onDoublePushRoute,
-    this.onDoublePushSubRootRoute,
     this.transitionProvider,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
@@ -73,27 +53,36 @@ class RouteManager with ChangeNotifier {
     ];
   }
 
+  List<AppPage> get pages => List.unmodifiable(_pages);
+  List<AppRoute> get routes =>
+      List.unmodifiable(pages.map<AppRoute>((e) => e.route));
+
+  AppPage get _currentPage => pages.isNotEmpty ? pages.last : null;
+  AppRoute get currentRoute => _currentPage?.route;
+
   void log(Object message) => debugging
       ? dev.log(message.toString(), name: runtimeType.toString())
       : null;
 
   void removePage(AppPage page, dynamic result) {
-    try {
-      final route = page.route;
-      if (route.isSubRoot) {
-        final subTree = pages.getSubTrees().find(route);
-        if (subTree != null) {
-          final newRoutes = pages.removeSubTree(route);
-          onRemoveRoute?.call(this, page.route);
-          _pages = newRoutes;
-        } else {
-          log("No subtree with root $route");
-        }
+    final route = page.route;
+
+    if (route.isSubRoot) {
+      final subTree = pages.getSubTrees().find(route);
+
+      if (subTree != null) {
+        final newRoutes = pages.removeSubTree(route);
+        subTree.children.reversed.forEach((page) {
+          observer?.notifyRemove(page.customPage.route);
+        });
+        observer?.notifyRemove(subTree.root.customPage.route);
+
+        _pages = newRoutes;
       } else {
-        _actualRemovePage(page, result);
+        log("No subtree with root $route");
       }
-    } catch (e) {
-      throw Exception("Remove route aborted. \n$e");
+    } else {
+      _actualRemovePage(page, result);
     }
     notifyListeners();
   }
@@ -113,10 +102,8 @@ class RouteManager with ChangeNotifier {
       final lastPageIndex = _pages.length - 1;
       if (page.key != lastPageIndex) {
         _pages.removeRange(page.key + 1, lastPageIndex);
-        notifyListeners();
-      } else {
-        notifyListeners();
       }
+      notifyListeners();
     } else {
       log("No page for $route");
     }
@@ -142,7 +129,11 @@ class RouteManager with ChangeNotifier {
 
       if (isReallyNewRoute) {
         _actualPushRoute(route);
-      } else if (_currentPage.route == route) {
+      }
+
+      // Cases when the new route is a sub-root
+      // and is the same as the current visible route.
+      else if (_currentPage.route == route) {
         switch (strategy) {
           case SubRootDuplicateStrategy.Ignore:
             log("[$strategy] Ignore pushing duplicate of $route.");
@@ -157,7 +148,12 @@ class RouteManager with ChangeNotifier {
             log("[$strategy] Pushed $route is the same with current visible.");
             break;
         }
-      } else {
+      }
+
+      // Cases when the new route is a sub-root
+      // and is NOT same with current visible route.
+      // For example, other bottom navigation tab.
+      else {
         final visibleSubtree = subTrees.isNotEmpty ? subTrees.last : null;
 
         if (visibleSubtree == null) {
@@ -173,6 +169,7 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.MakeVisibleOrReset:
               final newRoutes = pages.subTreeMovedDown(route, reset: true);
               _pages = newRoutes;
+              observer?.notifyDouble(route);
               break;
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
@@ -186,10 +183,12 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.MakeVisible:
               final newRoutes = pages.subTreeMovedDown(route, reset: false);
               _pages = newRoutes;
+              observer?.notifyDouble(route);
               break;
             case SubRootDuplicateStrategy.MakeVisibleOrReset:
               final newRoutes = pages.subTreeMovedDown(route, reset: false);
               _pages = newRoutes;
+              observer?.notifyDouble(route);
               break;
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
@@ -234,17 +233,12 @@ class RouteManager with ChangeNotifier {
       transitionDuration: transitionDuration,
       reverseTransitionDuration: reverseTransitionDuration,
     );
-    try {
-      onPushRoute?.call(this, route);
-      _pages.add(page);
-    } catch (e) {
-      _pages.remove(page);
-      throw Exception("Push route aborted. \n$e");
-    }
+    observer?.notifyPush(route);
+    _pages.add(page);
   }
 
   void _actualRemovePage(AppPage page, dynamic result) {
-    onRemoveRoute?.call(this, page.route);
+    observer?.notifyRemove(page.route);
     _pages.remove(page);
   }
 

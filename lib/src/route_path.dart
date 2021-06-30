@@ -14,16 +14,16 @@ enum DuplicateStrategy {
 }
 
 enum SubRootDuplicateStrategy {
-  /// Ignore pushing duplicate sub-root route.
+  /// Ignore pushing duplicate of sub-root route.
   Ignore,
 
-  /// If pushed route type already exists in routes list
-  /// and it's not last sub-root, then make it visible,
-  /// else reset sub-tree children.
+  /// Pushing a subroot will make its tree visible if it is not already visible.
+  /// Otherwise, if the tree of the route being pushed is currently visible,
+  /// the children of its tree will be removed.
   MakeVisibleOrReset,
 
-  /// If pushed route type already exists in routes list
-  /// and it's not last sub-root, then make it visible.
+  /// Pushing a subroot will make its tree visible if it is not already visible.
+  /// Otherwise, pushing will be ignored.
   MakeVisible,
 
   /// Just push route.
