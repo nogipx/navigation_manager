@@ -3,6 +3,10 @@
 * Create navigation manager which provides convenient declarative way
 to define app routes
 
+## [0.1.0] - 30 June 2021
+
+* Add route observer.
+  
 ## [0.0.13] - 5 June 2021
 
 * Fix null reference at fill route.
