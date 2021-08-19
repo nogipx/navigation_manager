@@ -12,19 +12,24 @@ class AppPage extends Page<AppPage> {
     Widget child,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
-  ) transitionProvider;
+  )? transitionProvider;
 
   const AppPage({
-    LocalKey key,
-    @required String name,
-    @required this.child,
-    @required this.route,
-    String restorationId,
-    Object arguments,
+    LocalKey? key,
+    required String name,
+    required this.child,
+    required this.route,
+    String? restorationId,
+    Object? arguments,
     this.transitionProvider,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) : super(key: key, name: name, restorationId: restorationId, arguments: arguments);
+  }) : super(
+          key: key,
+          name: name,
+          restorationId: restorationId,
+          arguments: arguments,
+        );
 
   @override
   Route<AppPage> createRoute(BuildContext context) {
@@ -35,7 +40,8 @@ class AppPage extends Page<AppPage> {
         reverseTransitionDuration: reverseTransitionDuration,
         pageBuilder: (context, _, __) => child,
         transitionsBuilder: (context, animation, animation2, page) {
-          return transitionProvider(page, animation, animation2);
+          return transitionProvider?.call(page, animation, animation2) ??
+              SizedBox();
         },
       );
     } else {

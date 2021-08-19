@@ -6,15 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:navigation_manager/src/observer.dart';
 
 class RouteManager with ChangeNotifier {
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
+  static AppRouteObserver? observer;
   final bool debugging;
-  static AppRouteObserver observer;
+
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   final AppRoute initialRoute;
   final Map<String, dynamic> initialRouteArgs;
   final AppRoute Function(AppRoute route) onUnknownRoute;
-  final Widget Function(RouteManager manager, AppRoute route, Widget page)
+  final Widget Function(RouteManager manager, AppRoute route, Widget page)?
       pageWrapper;
 
   final Duration transitionDuration;
@@ -24,20 +24,20 @@ class RouteManager with ChangeNotifier {
     Widget child,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
-  ) transitionProvider;
+  )? transitionProvider;
 
-  List<AppPage> _pages;
+  late List<AppPage> _pages;
 
   RouteManager({
-    @required this.initialRoute,
-    @required this.onUnknownRoute,
+    required this.initialRoute,
+    required this.onUnknownRoute,
     this.debugging = false,
-    this.initialRouteArgs,
+    this.initialRouteArgs = const <String, dynamic>{},
     this.pageWrapper,
     this.transitionProvider,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) : assert(onUnknownRoute != null && initialRoute != null) {
+  }) {
     final _initRoute = initialRoute.fill();
     _pages = [
       AppPage(
@@ -57,8 +57,8 @@ class RouteManager with ChangeNotifier {
   List<AppRoute> get routes =>
       List.unmodifiable(pages.map<AppRoute>((e) => e.route));
 
-  AppPage get _currentPage => pages.isNotEmpty ? pages.last : null;
-  AppRoute get currentRoute => _currentPage?.route;
+  AppPage get _currentPage => pages.last;
+  AppRoute get currentRoute => _currentPage.route;
 
   void log(Object message) => debugging
       ? dev.log(message.toString(), name: runtimeType.toString())
@@ -111,16 +111,12 @@ class RouteManager with ChangeNotifier {
 
   void pop() => removePage(_currentPage, null);
 
-  void push(AppRoute route, {Map<String, dynamic> data}) {
+  void push(AppRoute route, {Map<String, dynamic>? data}) {
     final _route = route.fill(data: data);
     _performPushRoute(_route);
   }
 
   void _performPushRoute(AppRoute route) {
-    assert(route != null);
-    if (route == null) {
-      throw Exception("Null route is not allowed.");
-    }
     if (route.isSubRoot) {
       final strategy = route.subRootDuplicateStrategy;
       final subTrees = _pages.getSubTrees();
@@ -146,6 +142,8 @@ class RouteManager with ChangeNotifier {
             break;
           case SubRootDuplicateStrategy.MakeVisible:
             log("[$strategy] Pushed $route is the same with current visible.");
+            break;
+          case SubRootDuplicateStrategy.None:
             break;
         }
       }
@@ -174,6 +172,8 @@ class RouteManager with ChangeNotifier {
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
               break;
+            case SubRootDuplicateStrategy.None:
+              break;
           }
         } else {
           switch (strategy) {
@@ -192,6 +192,8 @@ class RouteManager with ChangeNotifier {
               break;
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
+              break;
+            case SubRootDuplicateStrategy.None:
               break;
           }
         }
@@ -244,17 +246,12 @@ class RouteManager with ChangeNotifier {
 
   /// Returns page builder function defined in mapping.
   /// If route has not builder, throws [ArgumentError].
-  Widget Function(Map<String, dynamic> data) _getPageBuilder(AppRoute route) {
-    if (route.builder != null) {
-      if (pageWrapper != null) {
-        return (Map<String, dynamic> data) {
-          return pageWrapper.call(this, route, route.builder.call(data));
-        };
-      } else {
-        return route.builder;
-      }
+  Widget Function(Map<String, dynamic>? data) _getPageBuilder(AppRoute route) {
+    if (pageWrapper != null) {
+      return (Map<String, dynamic>? data) =>
+          pageWrapper!(this, route, route.builder.call(data));
     } else {
-      throw ArgumentError.notNull('builder');
+      return route.builder;
     }
   }
 }

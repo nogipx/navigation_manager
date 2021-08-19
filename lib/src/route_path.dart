@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:uri/uri.dart';
 
 enum DuplicateStrategy {
+  None,
+
   /// Ignore pushing route.
   Ignore,
 
@@ -14,6 +16,8 @@ enum DuplicateStrategy {
 }
 
 enum SubRootDuplicateStrategy {
+  None,
+
   /// Ignore pushing duplicate of sub-root route.
   Ignore,
 
@@ -36,18 +40,17 @@ class AppRoute extends Equatable {
   final SubRootDuplicateStrategy subRootDuplicateStrategy;
 
   final String template;
-  final Map<String, dynamic> data;
-  final Widget Function(Map<String, dynamic> data) builder;
+  final Map<String, dynamic>? data;
+  final Widget Function(Map<String, dynamic>? data) builder;
 
-  UriTemplate _uriTemplate;
+  late UriTemplate _uriTemplate;
   UriTemplate get uriTemplate => _uriTemplate;
-  final Uri actualUri;
+  final Uri? actualUri;
 
-  bool _isSubRoot;
+  late bool _isSubRoot;
   bool get isSubRoot => _isSubRoot;
 
-  // ignore: unused_field
-  int _uniqField;
+  late int _unique;
 
   AppRoute(
     this.template,
@@ -55,7 +58,7 @@ class AppRoute extends Equatable {
     this.actualUri,
     this.data,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-  }) : subRootDuplicateStrategy = null {
+  }) : subRootDuplicateStrategy = SubRootDuplicateStrategy.None {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
   }
@@ -67,24 +70,25 @@ class AppRoute extends Equatable {
     this.data,
     SubRootDuplicateStrategy duplicateStrategy =
         SubRootDuplicateStrategy.MakeVisible,
-  })  : duplicateStrategy = null,
+  })  : duplicateStrategy = DuplicateStrategy.None,
         subRootDuplicateStrategy = duplicateStrategy {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = true;
   }
+
   AppRoute.uniq(
     this.template,
     this.builder, {
     this.actualUri,
     this.data,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-  }) : subRootDuplicateStrategy = null {
+  }) : subRootDuplicateStrategy = SubRootDuplicateStrategy.None {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
-    _uniqField = DateTime.now().millisecondsSinceEpoch;
+    _unique = DateTime.now().millisecondsSinceEpoch;
   }
 
-  AppRoute copyWith({Uri actualUri, Map<String, dynamic> data}) {
+  AppRoute copyWith({Uri? actualUri, Map<String, dynamic>? data}) {
     if (isSubRoot) {
       return AppRoute.subroot(
         template,
@@ -104,10 +108,10 @@ class AppRoute extends Equatable {
     }
   }
 
-  AppRoute fill({Map<String, dynamic> data}) {
+  AppRoute fill({Map<String, dynamic>? data}) {
     if (data != null && data.isNotEmpty) {
       return copyWith(
-        actualUri: UriParser(uriTemplate).expand(data),
+        actualUri: UriParser(uriTemplate).expand(data.cast()),
         data: (this.data ?? <String, dynamic>{})..addAll(data),
       );
     } else {
@@ -116,7 +120,7 @@ class AppRoute extends Equatable {
   }
 
   @override
-  List<Object> get props => [template, _uniqField];
+  List<Object> get props => [template, _unique];
 
   @override
   String toString() => "${isSubRoot ? 'SubRoot ' : ''}AppRoute"

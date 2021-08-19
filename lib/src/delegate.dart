@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 class AppRouteDelegate extends RouterDelegate<AppRoute>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppRoute> {
   final RouteManager routeManager;
-  final Widget Function(Widget navigator) navigatorWrapper;
+  final Widget Function(Widget navigator)? navigatorWrapper;
 
   AppRouteDelegate({
-    @required this.routeManager,
+    required this.routeManager,
     this.navigatorWrapper,
-  }) : assert(routeManager != null) {
+  }) {
     routeManager.addListener(notifyListeners);
   }
 
@@ -40,7 +40,7 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
 
   @override
   Future<void> setNewRoutePath(AppRoute configuration) async =>
-      await routeManager.push(configuration);
+      routeManager.push(configuration);
 
   @override
   GlobalKey<NavigatorState> get navigatorKey => routeManager.navigatorKey;

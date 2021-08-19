@@ -10,13 +10,13 @@ class AppRouteObserver {
   const AppRouteObserver(this.onRouteChange);
 
   void notifyRemove(AppRoute route) =>
-      _safeRun(() => onRouteChange?.call(route, RouteActionType.REMOVE));
+      _safeRun(() => onRouteChange(route, RouteActionType.REMOVE));
 
   void notifyPush(AppRoute route) =>
-      _safeRun(() => onRouteChange?.call(route, RouteActionType.PUSH));
+      _safeRun(() => onRouteChange(route, RouteActionType.PUSH));
 
   void notifyDouble(AppRoute route) =>
-      _safeRun(() => onRouteChange?.call(route, RouteActionType.DOUBLE));
+      _safeRun(() => onRouteChange(route, RouteActionType.DOUBLE));
 
   void _safeRun(Function f) {
     try {

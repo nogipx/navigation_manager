@@ -1,13 +1,10 @@
-import 'package:meta/meta.dart';
-
 import 'export.dart';
 
 class _PageWithPosition {
   final AppPage customPage;
   final int position;
 
-  _PageWithPosition({@required this.customPage, @required this.position})
-      : assert(customPage != null && position != null && position >= 0);
+  _PageWithPosition({required this.customPage, required this.position});
 
   @override
   String toString() =>
@@ -18,13 +15,14 @@ class _SubTree {
   final _PageWithPosition root;
   final List<_PageWithPosition> children;
 
-  _SubTree({this.root, this.children});
+  _SubTree({required this.root, this.children = const []});
 
   @override
   String toString() => "SubTree(root: $root, children: $children)";
 
   int get startPosition => root.position;
-  int get endPosition => children.isNotEmpty ? children.last.position : startPosition;
+  int get endPosition =>
+      children.isNotEmpty ? children.last.position : startPosition;
 
   void reset() => children.clear();
 
@@ -37,7 +35,7 @@ class _SubTree {
 }
 
 extension PageList on List<AppPage> {
-  _SubTree getVisibleSubTree() {
+  _SubTree? getVisibleSubTree() {
     final subTrees = getSubTrees();
     return subTrees.isNotEmpty ? subTrees.last : null;
   }
@@ -56,12 +54,13 @@ extension PageList on List<AppPage> {
     }
   }
 
-  MapEntry<int, AppPage> getPageWithIndex(AppRoute route) {
-    final page = asMap().entries.lastWhere(
-          (e) => e.value.route == route,
-          orElse: () => null,
-        );
-    return page;
+  MapEntry<int, AppPage>? getPageWithIndex(AppRoute route) {
+    try {
+      final page = asMap().entries.lastWhere((e) => e.value.route == route);
+      return page;
+    } catch (_) {
+      return null;
+    }
   }
 
   List<AppPage> removeSubTree(AppRoute route) {
@@ -76,7 +75,8 @@ extension PageList on List<AppPage> {
   }
 
   List<_SubTree> getSubTrees() {
-    final List<MapEntry<_PageWithPosition, List<_PageWithPosition>>> treesEntries = [];
+    final List<MapEntry<_PageWithPosition, List<_PageWithPosition>>>
+        treesEntries = [];
     asMap().entries.forEach((entry) {
       final index = entry.key;
       final page = entry.value;
@@ -89,7 +89,7 @@ extension PageList on List<AppPage> {
           [],
         ));
       } else if (!page.route.isSubRoot) {
-        if (treesEntries.isNotEmpty && treesEntries.last != null) {
+        if (treesEntries.isNotEmpty) {
           treesEntries.last.value.add(
             _PageWithPosition(
               customPage: page,
@@ -111,10 +111,11 @@ extension PageList on List<AppPage> {
 }
 
 extension SubTreeList on List<_SubTree> {
-  _SubTree find(AppRoute route) {
-    return singleWhere(
-      (e) => e.root.customPage.route == route,
-      orElse: () => null,
-    );
+  _SubTree? find(AppRoute route) {
+    try {
+      return singleWhere((e) => e.root.customPage.route == route);
+    } catch (_) {
+      return null;
+    }
   }
 }
