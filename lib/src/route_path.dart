@@ -50,7 +50,7 @@ class AppRoute extends Equatable {
   late bool _isSubRoot;
   bool get isSubRoot => _isSubRoot;
 
-  late int _unique;
+  int? _unique;
 
   AppRoute(
     this.template,
@@ -120,7 +120,7 @@ class AppRoute extends Equatable {
   }
 
   @override
-  List<Object> get props => [template, _unique];
+  List<Object?> get props => [template, _unique];
 
   @override
   String toString() => "${isSubRoot ? 'SubRoot ' : ''}AppRoute"
