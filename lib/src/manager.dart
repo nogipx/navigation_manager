@@ -13,7 +13,6 @@ class RouteManager with ChangeNotifier {
 
   final AppRoute initialRoute;
   final Map<String, dynamic> initialRouteArgs;
-  final AppRoute Function(AppRoute route) onUnknownRoute;
   final Widget Function(RouteManager manager, AppRoute route, Widget page)?
       pageWrapper;
 
@@ -30,7 +29,6 @@ class RouteManager with ChangeNotifier {
 
   RouteManager({
     required this.initialRoute,
-    required this.onUnknownRoute,
     this.debugging = false,
     this.initialRouteArgs = const <String, dynamic>{},
     this.pageWrapper,
@@ -87,6 +85,8 @@ class RouteManager with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Removes the specified route from the routes list.
+  /// If the specified route is sub-root then entire sub-tree will be deleted.
   void remove(AppRoute route, {dynamic data}) {
     final page = pages.getPageWithIndex(route);
     if (page != null) {
@@ -96,6 +96,7 @@ class RouteManager with ChangeNotifier {
     }
   }
 
+  /// Removes all routes from the routes list after the specified.
   void removeUntil(AppRoute route) {
     final page = pages.getPageWithIndex(route);
     if (page != null) {
