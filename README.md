@@ -16,6 +16,8 @@
 Define routes
 
 ```dart
+// routes.dart
+
 import 'package:flutter/material.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 
