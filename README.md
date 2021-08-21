@@ -4,6 +4,7 @@
 
 - [x] Navigator 2.0 support
 - [x] Duplicate strategies and [**tree concept**](doc/subtrees.md)
+- [ ] Nested sub-trees
 - [x] Uri templates parsing. Check [**uri package**](https://pub.dev/packages/uri) and [RFC 6570](https://datatracker.ietf.org/doc/html/rfc6570)
 - [ ] Global(ok) / per route transitions
 
