@@ -77,7 +77,7 @@ class _MyAppState extends State<MyApp> {
       ),
       routeInformationParser: AppRouteInformationParser(
         unknownRoute: Routes.unknown, // required 
-        routes: Routes.appRoutes, ?? // required
+        routes: Routes.appRoutes, // required
       ),
     );
   }
