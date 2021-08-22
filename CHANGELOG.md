@@ -3,6 +3,10 @@
 * Create navigation manager which provides convenient declarative way
 to define app routes
 
+## [1.0.0] - 26 August 2021
+
+* Actualize readme, migrate to sound null safety.
+
 ## [0.1.0] - 30 June 2021
 
 * Add route observer.

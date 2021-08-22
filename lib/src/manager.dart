@@ -238,6 +238,8 @@ class RouteManager with ChangeNotifier {
           case DuplicateStrategy.Append:
             _actualPushRoute(route);
             break;
+          case DuplicateStrategy.None:
+            break;
         }
       } else {
         _actualPushRoute(route);

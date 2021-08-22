@@ -14,7 +14,7 @@ dependencies:
     sdk: flutter
   
   uri: ^1.0.0
-  meta: any
+  meta: ^1.3.0
   equatable: ^2.0.3
 
 dev_dependencies:
