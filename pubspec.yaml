@@ -18,6 +18,4 @@ dependencies:
   equatable: ^2.0.3
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   pedantic: ^1.11.0

@@ -1,9 +1,22 @@
 import 'dart:developer' as dev;
 
 import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:navigation_manager/src/observer.dart';
+
+typedef TransitionProvider = Widget Function(
+  Widget child,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+)?;
+
+typedef PageWrapper = Widget Function(
+  RouteManager manager,
+  AppRoute route,
+  Widget page,
+)?;
 
 class RouteManager with ChangeNotifier {
   static AppRouteObserver? observer;
@@ -11,57 +24,66 @@ class RouteManager with ChangeNotifier {
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  final AppRoute initialRoute;
-  final Map<String, dynamic> initialRouteArgs;
-  final Widget Function(RouteManager manager, AppRoute route, Widget page)?
-      pageWrapper;
+  /// Route with which app will be initialized.
+  final AppRoute _initialRoute;
 
-  final Duration transitionDuration;
-  final Duration reverseTransitionDuration;
+  /// Optional arguments for initial route.
+  final Map<String, dynamic> _initialRouteArgs;
 
-  final Widget Function(
-    Widget child,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  )? transitionProvider;
+  /// Called when new route pushed.
+  /// Allows to wrap every route with custom widgets.
+  final PageWrapper _pageWrapper;
+
+  final Duration _transitionDuration;
+  final Duration _reverseTransitionDuration;
+
+  final TransitionProvider _transitionProvider;
 
   late List<AppPage> _pages;
 
   RouteManager({
-    required this.initialRoute,
+    required AppRoute initialRoute,
     this.debugging = false,
-    this.initialRouteArgs = const <String, dynamic>{},
-    this.pageWrapper,
-    this.transitionProvider,
-    this.transitionDuration = const Duration(milliseconds: 300),
-    this.reverseTransitionDuration = const Duration(milliseconds: 300),
-  }) {
-    final _initRoute = initialRoute.fill();
+    Map<String, dynamic> initialRouteArgs = const <String, dynamic>{},
+    PageWrapper pageWrapper,
+    TransitionProvider transitionProvider,
+    Duration transitionDuration = const Duration(milliseconds: 300),
+    Duration reverseTransitionDuration = const Duration(milliseconds: 300),
+  })  : _initialRoute = initialRoute,
+        _initialRouteArgs = initialRouteArgs,
+        _pageWrapper = pageWrapper,
+        _transitionProvider = transitionProvider,
+        _transitionDuration = transitionDuration,
+        _reverseTransitionDuration = reverseTransitionDuration {
+    final _initRoute = _initialRoute.fill();
     _pages = [
       AppPage(
         key: ObjectKey(_initRoute),
         route: _initRoute,
-        child: _getPageBuilder(_initRoute).call(initialRouteArgs),
+        child: _getPageBuilder(_initRoute).call(_initialRouteArgs),
         name: _initRoute.actualUri.toString(),
         restorationId: _initRoute.template,
-        transitionProvider: transitionProvider,
-        transitionDuration: transitionDuration,
-        reverseTransitionDuration: reverseTransitionDuration,
+        transitionProvider: _transitionProvider,
+        transitionDuration: _transitionDuration,
+        reverseTransitionDuration: _reverseTransitionDuration,
       )
     ];
   }
 
+  @internal
   List<AppPage> get pages => List.unmodifiable(_pages);
+
   List<AppRoute> get routes =>
       List.unmodifiable(pages.map<AppRoute>((e) => e.route));
 
   AppPage get _currentPage => pages.last;
   AppRoute get currentRoute => _currentPage.route;
 
-  void log(Object message) => debugging
+  void _log(Object message) => debugging
       ? dev.log(message.toString(), name: runtimeType.toString())
       : null;
 
+  @internal
   void removePage(AppPage page, dynamic result) {
     final route = page.route;
 
@@ -77,7 +99,7 @@ class RouteManager with ChangeNotifier {
 
         _pages = newRoutes;
       } else {
-        log("No subtree with root $route");
+        _log("No subtree with root $route");
       }
     } else {
       _actualRemovePage(page, result);
@@ -92,7 +114,7 @@ class RouteManager with ChangeNotifier {
     if (page != null) {
       removePage(page.value, data);
     } else {
-      log("No page with $route found.");
+      _log("No page with $route found.");
     }
   }
 
@@ -106,7 +128,7 @@ class RouteManager with ChangeNotifier {
       }
       notifyListeners();
     } else {
-      log("No page for $route");
+      _log("No page for $route");
     }
   }
 
@@ -133,16 +155,16 @@ class RouteManager with ChangeNotifier {
       else if (_currentPage.route == route) {
         switch (strategy) {
           case SubRootDuplicateStrategy.Ignore:
-            log("[$strategy] Ignore pushing duplicate of $route.");
+            _log("[$strategy] Ignore pushing duplicate of $route.");
             break;
           case SubRootDuplicateStrategy.Append:
             _actualPushRoute(route);
             break;
           case SubRootDuplicateStrategy.MakeVisibleOrReset:
-            log("[$strategy] Pushed $route is the same with current visible.");
+            _log("[$strategy] Pushed $route is the same with current visible.");
             break;
           case SubRootDuplicateStrategy.MakeVisible:
-            log("[$strategy] Pushed $route is the same with current visible.");
+            _log("[$strategy] Pushed $route is the same with current visible.");
             break;
           case SubRootDuplicateStrategy.None:
             break;
@@ -160,10 +182,10 @@ class RouteManager with ChangeNotifier {
         } else if (visibleSubtree.root.customPage.route == route) {
           switch (strategy) {
             case SubRootDuplicateStrategy.Ignore:
-              log("[$strategy] Ignore pushing duplicate of $route.");
+              _log("[$strategy] Ignore pushing duplicate of $route.");
               break;
             case SubRootDuplicateStrategy.MakeVisible:
-              log("[$strategy] Sub-tree with root $route is already visible.");
+              _log("[$strategy] Sub-tree with root $route is already visible.");
               break;
             case SubRootDuplicateStrategy.MakeVisibleOrReset:
               final newRoutes = pages.subTreeMovedDown(route, reset: true);
@@ -179,7 +201,7 @@ class RouteManager with ChangeNotifier {
         } else {
           switch (strategy) {
             case SubRootDuplicateStrategy.Ignore:
-              log("[$strategy] Ignore pushing duplicate of $route.");
+              _log("[$strategy] Ignore pushing duplicate of $route.");
               break;
             case SubRootDuplicateStrategy.MakeVisible:
               final newRoutes = pages.subTreeMovedDown(route, reset: false);
@@ -207,7 +229,7 @@ class RouteManager with ChangeNotifier {
         final strategy = route.duplicateStrategy;
         switch (strategy) {
           case DuplicateStrategy.Ignore:
-            log("Ignore pushing duplicate of $route");
+            _log("Ignore pushing duplicate of $route");
             break;
           case DuplicateStrategy.Replace:
             remove(route);
@@ -232,9 +254,9 @@ class RouteManager with ChangeNotifier {
       name: route.actualUri.toString(),
       child: _getPageBuilder(route).call(route.data),
       restorationId: route.actualUri.toString(),
-      transitionProvider: transitionProvider,
-      transitionDuration: transitionDuration,
-      reverseTransitionDuration: reverseTransitionDuration,
+      transitionProvider: _transitionProvider,
+      transitionDuration: _transitionDuration,
+      reverseTransitionDuration: _reverseTransitionDuration,
     );
     observer?.notifyPush(route);
     _pages.add(page);
@@ -248,9 +270,9 @@ class RouteManager with ChangeNotifier {
   /// Returns page builder function defined in mapping.
   /// If route has not builder, throws [ArgumentError].
   Widget Function(Map<String, dynamic>? data) _getPageBuilder(AppRoute route) {
-    if (pageWrapper != null) {
+    if (_pageWrapper != null) {
       return (Map<String, dynamic>? data) =>
-          pageWrapper!(this, route, route.builder.call(data));
+          _pageWrapper!(this, route, route.builder.call(data));
     } else {
       return route.builder;
     }

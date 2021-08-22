@@ -12,7 +12,7 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
   final Uri Function(Uri initialUri)? transformUri;
   final Function(Uri uri, AppRoute selectedRoute)? onExternalRoute;
 
-  AppRouteInformationParser({
+  const AppRouteInformationParser({
     required this.routes,
     required this.unknownRoute,
     this.debugging = false,

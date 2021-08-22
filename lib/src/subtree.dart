@@ -1,4 +1,4 @@
-import 'export.dart';
+import 'package:navigation_manager/navigation_manager.dart';
 
 class _PageWithPosition {
   final AppPage customPage;
