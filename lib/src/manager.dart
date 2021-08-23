@@ -7,16 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:navigation_manager/src/observer.dart';
 
 typedef TransitionProvider = Widget Function(
-  Widget child,
+  BuildContext context,
   Animation<double> animation,
   Animation<double> secondaryAnimation,
-)?;
+  Widget child,
+);
 
 typedef PageWrapper = Widget Function(
   RouteManager manager,
   AppRoute route,
   Widget page,
-)?;
+);
 
 class RouteManager with ChangeNotifier {
   static AppRouteObserver? observer;
@@ -32,12 +33,12 @@ class RouteManager with ChangeNotifier {
 
   /// Called when new route pushed.
   /// Allows to wrap every route with custom widgets.
-  final PageWrapper _pageWrapper;
+  final PageWrapper? _pageWrapper;
 
-  final Duration _transitionDuration;
-  final Duration _reverseTransitionDuration;
+  final Duration? _transitionDuration;
+  final Duration? _reverseTransitionDuration;
 
-  final TransitionProvider _transitionProvider;
+  final TransitionProvider? _transitionProvider;
 
   late List<AppPage> _pages;
 
@@ -45,10 +46,10 @@ class RouteManager with ChangeNotifier {
     required AppRoute initialRoute,
     this.debugging = false,
     Map<String, dynamic> initialRouteArgs = const <String, dynamic>{},
-    PageWrapper pageWrapper,
-    TransitionProvider transitionProvider,
-    Duration transitionDuration = const Duration(milliseconds: 300),
-    Duration reverseTransitionDuration = const Duration(milliseconds: 300),
+    PageWrapper? pageWrapper,
+    TransitionProvider? transitionProvider,
+    Duration? transitionDuration,
+    Duration? reverseTransitionDuration,
   })  : _initialRoute = initialRoute,
         _initialRouteArgs = initialRouteArgs,
         _pageWrapper = pageWrapper,
@@ -256,9 +257,10 @@ class RouteManager with ChangeNotifier {
       name: route.actualUri.toString(),
       child: _getPageBuilder(route).call(route.data),
       restorationId: route.actualUri.toString(),
-      transitionProvider: _transitionProvider,
-      transitionDuration: _transitionDuration,
-      reverseTransitionDuration: _reverseTransitionDuration,
+      transitionProvider: route.transition ?? _transitionProvider,
+      transitionDuration: route.duration ?? _transitionDuration,
+      reverseTransitionDuration:
+          route.reverseDuration ?? _reverseTransitionDuration,
     );
     observer?.notifyPush(route);
     _pages.add(page);

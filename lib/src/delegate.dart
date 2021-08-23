@@ -2,7 +2,7 @@ import 'dart:developer' as dev;
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
 
-typedef NavigatorWrapper = Widget Function(Navigator navigator)?;
+typedef NavigatorWrapper = Widget Function(Navigator navigator);
 
 class AppRouteDelegate extends RouterDelegate<AppRoute>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppRoute> {
@@ -10,11 +10,11 @@ class AppRouteDelegate extends RouterDelegate<AppRoute>
 
   /// Called when delegate builds.
   /// Allows to wrap navigator with custom widgets.
-  final NavigatorWrapper _navigatorWrapper;
+  final NavigatorWrapper? _navigatorWrapper;
 
   AppRouteDelegate({
     required RouteManager routeManager,
-    NavigatorWrapper navigatorWrapper,
+    NavigatorWrapper? navigatorWrapper,
   })  : _routeManager = routeManager,
         _navigatorWrapper = navigatorWrapper {
     routeManager.addListener(notifyListeners);

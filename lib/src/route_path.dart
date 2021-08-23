@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import 'package:navigation_manager/navigation_manager.dart';
 import 'package:uri/uri.dart';
 
 enum DuplicateStrategy {
@@ -52,12 +53,19 @@ class AppRoute extends Equatable {
 
   int? _unique;
 
+  final TransitionProvider? transition;
+  final Duration? duration;
+  final Duration? reverseDuration;
+
   AppRoute(
     this.template,
     this.builder, {
     this.actualUri,
     this.data,
+    this.duration,
+    this.reverseDuration,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
+    this.transition,
   }) : subRootDuplicateStrategy = SubRootDuplicateStrategy.None {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
@@ -68,6 +76,9 @@ class AppRoute extends Equatable {
     this.builder, {
     this.actualUri,
     this.data,
+    this.transition,
+    this.duration,
+    this.reverseDuration,
     SubRootDuplicateStrategy duplicateStrategy =
         SubRootDuplicateStrategy.MakeVisible,
   })  : duplicateStrategy = DuplicateStrategy.None,
@@ -81,6 +92,9 @@ class AppRoute extends Equatable {
     this.builder, {
     this.actualUri,
     this.data,
+    this.transition,
+    this.duration,
+    this.reverseDuration,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
   }) : subRootDuplicateStrategy = SubRootDuplicateStrategy.None {
     _uriTemplate = UriTemplate(template);
@@ -96,6 +110,9 @@ class AppRoute extends Equatable {
         actualUri: actualUri ?? this.actualUri,
         data: data,
         duplicateStrategy: subRootDuplicateStrategy,
+        transition: transition,
+        duration: duration,
+        reverseDuration: reverseDuration,
       );
     } else {
       return AppRoute(
@@ -104,6 +121,9 @@ class AppRoute extends Equatable {
         actualUri: actualUri ?? this.actualUri,
         data: data,
         duplicateStrategy: duplicateStrategy,
+        transition: transition,
+        duration: duration,
+        reverseDuration: reverseDuration,
       );
     }
   }

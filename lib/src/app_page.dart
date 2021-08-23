@@ -5,14 +5,10 @@ class AppPage extends Page<AppPage> {
   final AppRoute route;
   final Widget child;
 
-  final Duration transitionDuration;
-  final Duration reverseTransitionDuration;
+  final Duration? transitionDuration;
+  final Duration? reverseTransitionDuration;
 
-  final Widget Function(
-    Widget child,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  )? transitionProvider;
+  final TransitionProvider? transitionProvider;
 
   const AppPage({
     LocalKey? key,
@@ -22,8 +18,8 @@ class AppPage extends Page<AppPage> {
     String? restorationId,
     Object? arguments,
     this.transitionProvider,
-    this.transitionDuration = const Duration(milliseconds: 300),
-    this.reverseTransitionDuration = const Duration(milliseconds: 300),
+    this.transitionDuration,
+    this.reverseTransitionDuration,
   }) : super(
           key: key,
           name: name,
@@ -34,16 +30,30 @@ class AppPage extends Page<AppPage> {
   @override
   Route<AppPage> createRoute(BuildContext context) {
     if (transitionProvider != null) {
-      return PageRouteBuilder(
-        settings: this,
-        transitionDuration: transitionDuration,
-        reverseTransitionDuration: reverseTransitionDuration,
-        pageBuilder: (context, _, __) => child,
-        transitionsBuilder: (context, animation, animation2, page) {
-          return transitionProvider?.call(page, animation, animation2) ??
-              SizedBox();
-        },
-      );
+      if (transitionDuration != null) {
+        return PageRouteBuilder(
+          settings: this,
+          transitionDuration: transitionDuration!,
+          reverseTransitionDuration:
+              reverseTransitionDuration ?? transitionDuration!,
+          pageBuilder: (context, _, __) => child,
+          transitionsBuilder: (context, animation, animation2, page) {
+            return transitionProvider?.call(
+                    context, animation, animation2, page) ??
+                SizedBox();
+          },
+        );
+      } else {
+        return PageRouteBuilder(
+          settings: this,
+          pageBuilder: (context, _, __) => child,
+          transitionsBuilder: (context, animation, animation2, page) {
+            return transitionProvider?.call(
+                    context, animation, animation2, page) ??
+                SizedBox();
+          },
+        );
+      }
     } else {
       return MaterialPageRoute(
         settings: this,
