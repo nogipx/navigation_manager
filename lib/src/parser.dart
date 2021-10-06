@@ -7,7 +7,7 @@ import 'package:uri/uri.dart';
 class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
   final bool debugging;
   final List<AppRoute> routes;
-  final AppRoute? initialRoute;
+  final AppRoute? rootRoute;
   final AppRoute unknownRoute;
   final Uri Function(Uri initialUri)? transformUri;
   final Function(Uri uri, AppRoute selectedRoute)? onExternalRoute;
@@ -16,7 +16,7 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
     required this.routes,
     required this.unknownRoute,
     this.debugging = false,
-    this.initialRoute,
+    this.rootRoute,
     this.transformUri,
     this.onExternalRoute,
   });
@@ -32,14 +32,14 @@ class AppRouteInformationParser extends RouteInformationParser<AppRoute> {
     final _uri = transformUri?.call(_initialUri) ?? _initialUri;
 
     if (routeInformation.location == "/") {
-      return initialRoute ??
+      return rootRoute ??
           routes.singleWhere((e) => e.template == "/", orElse: () {
             log("No initial route provided.");
             return unknownRoute;
           });
     } else {
       final routesWithoutInitial =
-          routes.where((e) => e.template != "/" && e != initialRoute).toList();
+          routes.where((e) => e.template != "/" && e != rootRoute).toList();
       final matchedRoutes = routesWithoutInitial
           .where((e) => UriParser(e.uriTemplate).matches(_uri))
           .toList();

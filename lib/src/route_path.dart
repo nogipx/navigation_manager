@@ -28,6 +28,11 @@ enum SubRootDuplicateStrategy {
   MakeVisibleOrReset,
 
   /// Pushing a subroot will make its tree visible if it is not already visible.
+  /// Otherwise, if the tree of the route being pushed is currently visible,
+  /// the last child of its tree will be removed.
+  MakeVisibleOrPop,
+
+  /// Pushing a subroot will make its tree visible if it is not already visible.
   /// Otherwise, pushing will be ignored.
   MakeVisible,
 

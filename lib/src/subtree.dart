@@ -26,6 +26,8 @@ class _SubTree {
 
   void reset() => children.clear();
 
+  void popChild() => children.removeLast();
+
   List<AppPage> toPagesView() {
     return [
       root.customPage,
@@ -40,13 +42,19 @@ extension PageList on List<AppPage> {
     return subTrees.isNotEmpty ? subTrees.last : null;
   }
 
-  List<AppPage> subTreeMovedDown(AppRoute route, {bool reset = false}) {
+  List<AppPage> subTreeMovedDown(
+    AppRoute route, {
+    bool reset = false,
+    bool pop = false,
+  }) {
     final subTree = getSubTrees().find(route);
     if (subTree != null && subTree.endPosition <= length - 1) {
       final newRoutes = List.of(this)
         ..removeRange(subTree.startPosition, subTree.endPosition + 1);
       if (reset) {
         subTree.reset();
+      } else if (pop) {
+        subTree.popChild();
       }
       return newRoutes..addAll(subTree.toPagesView());
     } else {

@@ -33,7 +33,7 @@ class RouteManager with ChangeNotifier {
 
   /// Called when new route pushed.
   /// Allows to wrap every route with custom widgets.
-  final PageWrapper? _pageWrapper;
+  final PageWrapper? _routeBuildInterceptor;
 
   final Duration? _transitionDuration;
   final Duration? _reverseTransitionDuration;
@@ -46,13 +46,13 @@ class RouteManager with ChangeNotifier {
     required AppRoute initialRoute,
     this.debugging = false,
     Map<String, dynamic> initialRouteArgs = const <String, dynamic>{},
-    PageWrapper? pageWrapper,
+    PageWrapper? routeBuildInterceptor,
     TransitionProvider? transitionProvider,
     Duration? transitionDuration,
     Duration? reverseTransitionDuration,
   })  : _initialRoute = initialRoute,
         _initialRouteArgs = initialRouteArgs,
-        _pageWrapper = pageWrapper,
+        _routeBuildInterceptor = routeBuildInterceptor,
         _transitionProvider = transitionProvider,
         _transitionDuration = transitionDuration,
         _reverseTransitionDuration = reverseTransitionDuration {
@@ -133,11 +133,29 @@ class RouteManager with ChangeNotifier {
     }
   }
 
+  void replaceAll(List<AppRoute> replaceWith) {
+    if (replaceWith.isNotEmpty) {
+      _pages.clear();
+      replaceWith.forEach((e) => _performPushRoute(e.fill()));
+      notifyListeners();
+    } else {
+      _log('List of routes to replace should not be empty.');
+    }
+  }
+
+  // void replaceUntil(AppRoute route, List<AppRoute> replaceWith) {}
+
+  void replaceLast(AppRoute replaceWith, {Map<String, dynamic>? data}) {
+    _pages.removeLast();
+    push(replaceWith, data: data);
+  }
+
   void pop() => removePage(_currentPage, null);
 
   void push(AppRoute route, {Map<String, dynamic>? data}) {
     final _route = route.fill(data: data);
     _performPushRoute(_route);
+    notifyListeners();
   }
 
   void _performPushRoute(AppRoute route) {
@@ -153,7 +171,7 @@ class RouteManager with ChangeNotifier {
 
       // Cases when the new route is a sub-root
       // and is the same as the current visible route.
-      else if (_currentPage.route == route) {
+      else if (_pages.isNotEmpty && _currentPage.route == route) {
         switch (strategy) {
           case SubRootDuplicateStrategy.Ignore:
             _log("[$strategy] Ignore pushing duplicate of $route.");
@@ -162,6 +180,9 @@ class RouteManager with ChangeNotifier {
             _actualPushRoute(route);
             break;
           case SubRootDuplicateStrategy.MakeVisibleOrReset:
+            _log("[$strategy] Pushed $route is the same with current visible.");
+            break;
+          case SubRootDuplicateStrategy.MakeVisibleOrPop:
             _log("[$strategy] Pushed $route is the same with current visible.");
             break;
           case SubRootDuplicateStrategy.MakeVisible:
@@ -193,6 +214,11 @@ class RouteManager with ChangeNotifier {
               _pages = newRoutes;
               observer?.notifyDouble(route);
               break;
+            case SubRootDuplicateStrategy.MakeVisibleOrPop:
+              final newRoutes = pages.subTreeMovedDown(route, pop: true);
+              _pages = newRoutes;
+              observer?.notifyDouble(route);
+              break;
             case SubRootDuplicateStrategy.Append:
               _actualPushRoute(route);
               break;
@@ -205,12 +231,17 @@ class RouteManager with ChangeNotifier {
               _log("[$strategy] Ignore pushing duplicate of $route.");
               break;
             case SubRootDuplicateStrategy.MakeVisible:
-              final newRoutes = pages.subTreeMovedDown(route, reset: false);
+              final newRoutes = pages.subTreeMovedDown(route);
               _pages = newRoutes;
               observer?.notifyDouble(route);
               break;
             case SubRootDuplicateStrategy.MakeVisibleOrReset:
-              final newRoutes = pages.subTreeMovedDown(route, reset: false);
+              final newRoutes = pages.subTreeMovedDown(route);
+              _pages = newRoutes;
+              observer?.notifyDouble(route);
+              break;
+            case SubRootDuplicateStrategy.MakeVisibleOrPop:
+              final newRoutes = pages.subTreeMovedDown(route);
               _pages = newRoutes;
               observer?.notifyDouble(route);
               break;
@@ -226,7 +257,7 @@ class RouteManager with ChangeNotifier {
 
     // If new route is not sub root then just push it.
     else {
-      if (_currentPage.route == route) {
+      if (_pages.isNotEmpty && _currentPage.route == route) {
         final strategy = route.duplicateStrategy;
         switch (strategy) {
           case DuplicateStrategy.Ignore:
@@ -246,8 +277,6 @@ class RouteManager with ChangeNotifier {
         _actualPushRoute(route);
       }
     }
-
-    notifyListeners();
   }
 
   void _actualPushRoute(AppRoute route) {
@@ -274,9 +303,9 @@ class RouteManager with ChangeNotifier {
   /// Returns page builder function defined in mapping.
   /// If route has not builder, throws [ArgumentError].
   Widget Function(Map<String, dynamic>? data) _getPageBuilder(AppRoute route) {
-    if (_pageWrapper != null) {
+    if (_routeBuildInterceptor != null) {
       return (Map<String, dynamic>? data) =>
-          _pageWrapper!(this, route, route.builder.call(data));
+          _routeBuildInterceptor!(this, route, route.builder.call(data));
     } else {
       return route.builder;
     }
