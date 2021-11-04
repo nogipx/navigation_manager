@@ -1,3 +1,7 @@
+## 1.2.0
+
+* Add automatic page transition selection depending on system. iOS -> Cupertino, Android -> Material
+
 ## 1.1.1
 
 * [Add MakeVisibleOrPopChild sub root duplicate strategy](https://github.com/nogipx/navigation_manager/issues/4)
