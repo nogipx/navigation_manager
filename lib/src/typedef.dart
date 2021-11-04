@@ -13,3 +13,5 @@ typedef PageWrapper = Widget Function(
   AppRoute route,
   Widget page,
 );
+
+typedef NavigatorWrapper = Widget Function(Navigator navigator);

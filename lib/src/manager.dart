@@ -10,7 +10,7 @@ import 'package:universal_io/io.dart';
 class RouteManager with ChangeNotifier {
   RouteManager({
     required AppRoute initialRoute,
-    this.debugging = false,
+    this.debugging = true,
     Map<String, dynamic> initialRouteArgs = const <String, dynamic>{},
     PageWrapper? routeBuildInterceptor,
     TransitionProvider? defaultTransition,

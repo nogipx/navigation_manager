@@ -2,8 +2,6 @@ import 'dart:developer' as dev;
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
 
-typedef NavigatorWrapper = Widget Function(Navigator navigator);
-
 class AppRouteDelegate extends RouterDelegate<AppRoute>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppRoute> {
   final RouteManager _routeManager;

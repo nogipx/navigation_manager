@@ -23,5 +23,6 @@ For this cases you can:
 | ------ | ------ |
 | ignore | ignore |
 | reset children | make it visible |
+| pop last child | make it visible and pop last child |
 | append (create new sub-tree) | make it visible and reset children |
 | - | append (create new sub-tree) |
