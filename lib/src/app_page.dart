@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:universal_io/io.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:navigation_manager/navigation_manager.dart';
@@ -8,11 +7,11 @@ class AppPage extends Page<AppPage> {
   final AppRoute route;
   final Widget child;
 
-  final Duration? transitionDuration;
-  final Duration? reverseTransitionDuration;
+  final Duration? defaultDuration;
+  final Duration? defaultReverseDuration;
 
-  final TransitionProvider? transitionProvider;
-  final AppRouteType? customDefaultRouteType;
+  final TransitionProvider? defaultTransition;
+  final bool isCupertinoByDefault;
 
   const AppPage({
     LocalKey? key,
@@ -21,10 +20,10 @@ class AppPage extends Page<AppPage> {
     required this.route,
     String? restorationId,
     Object? arguments,
-    this.transitionProvider,
-    this.transitionDuration,
-    this.reverseTransitionDuration,
-    this.customDefaultRouteType,
+    this.defaultTransition,
+    this.defaultDuration,
+    this.defaultReverseDuration,
+    this.isCupertinoByDefault = false,
   }) : super(
           key: key,
           name: name,
@@ -34,59 +33,59 @@ class AppPage extends Page<AppPage> {
 
   @override
   Route<AppPage> createRoute(BuildContext context) {
-    if (transitionProvider != null) {
-      if (transitionDuration != null) {
-        return PageRouteBuilder(
-          settings: this,
-          transitionDuration: transitionDuration!,
-          reverseTransitionDuration:
-              reverseTransitionDuration ?? transitionDuration!,
-          pageBuilder: (context, _, __) => child,
-          transitionsBuilder: (context, animation, animation2, page) {
-            return transitionProvider?.call(
-                    context, animation, animation2, page) ??
-                SizedBox();
-          },
-        );
-      } else {
-        return PageRouteBuilder(
-          settings: this,
-          pageBuilder: (context, _, __) => child,
-          transitionsBuilder: (context, animation, animation2, page) {
-            return transitionProvider?.call(
-                    context, animation, animation2, page) ??
-                SizedBox();
-          },
-        );
-      }
+    if (route.isCupertino != null) {
+      return _selectPageRoute(route.isCupertino!);
+    } else if (isCupertinoByDefault) {
+      return _selectPageRoute(true);
+    } else if ((route.transition ?? defaultTransition) != null) {
+      return _getCustomRouteBuilder();
     } else {
-      if (route.type != null) {
-        return _selectPageRoute(route.type!);
-      } else if (customDefaultRouteType != null) {
-        return _selectPageRoute(customDefaultRouteType!);
-      } else {
-        return _selectPageRoute(_defaultRouteType);
-      }
+      return _selectPageRoute(false);
     }
   }
 
-  AppRouteType get _defaultRouteType {
-    if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
-      return AppRouteType.Cupertino;
+  PageRouteBuilder<AppPage> _getCustomRouteBuilder() {
+    final duration = route.duration ?? defaultDuration;
+    final reverseDuration = route.reverseDuration ?? defaultReverseDuration;
+
+    if (duration != null) {
+      return PageRouteBuilder<AppPage>(
+        settings: this,
+        transitionDuration: duration,
+        reverseTransitionDuration: reverseDuration ?? duration,
+        pageBuilder: (context, _, __) => child,
+        transitionsBuilder: (context, animation, animation2, page) {
+          return (route.transition ?? defaultTransition)
+                  ?.call(context, animation, animation2, page) ??
+              SizedBox();
+        },
+      );
+    } else {
+      return PageRouteBuilder<AppPage>(
+        settings: this,
+        pageBuilder: (context, _, __) => child,
+        transitionsBuilder: (context, animation, animation2, page) {
+          return (route.transition ?? defaultTransition)
+                  ?.call(context, animation, animation2, page) ??
+              SizedBox();
+        },
+      );
     }
-    return AppRouteType.Material;
   }
 
-  PageRoute<T> _selectPageRoute<T>(AppRouteType type) {
-    if (type == AppRouteType.Cupertino) {
+  PageRoute<AppPage> _selectPageRoute(bool isCupertino) {
+    if (isCupertino) {
       return CupertinoPageRoute(
         settings: this,
         builder: (context) => child,
       );
+    } else if ((route.transition ?? defaultTransition) != null) {
+      return _getCustomRouteBuilder();
+    } else {
+      return MaterialPageRoute(
+        settings: this,
+        builder: (context) => child,
+      );
     }
-    return MaterialPageRoute(
-      settings: this,
-      builder: (context) => child,
-    );
   }
 }

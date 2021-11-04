@@ -5,6 +5,7 @@ import 'package:meta/meta.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:navigation_manager/src/observer.dart';
+import 'package:universal_io/io.dart';
 
 typedef TransitionProvider = Widget Function(
   BuildContext context,
@@ -20,6 +21,37 @@ typedef PageWrapper = Widget Function(
 );
 
 class RouteManager with ChangeNotifier {
+  RouteManager({
+    required AppRoute initialRoute,
+    this.debugging = false,
+    Map<String, dynamic> initialRouteArgs = const <String, dynamic>{},
+    PageWrapper? routeBuildInterceptor,
+    TransitionProvider? defaultTransition,
+    Duration? transitionDuration,
+    Duration? reverseTransitionDuration,
+    this.defaultCupertinoTransition,
+  })  : _initialRoute = initialRoute,
+        _initialRouteArgs = initialRouteArgs,
+        _routeBuildInterceptor = routeBuildInterceptor,
+        _defaultTransition = defaultTransition,
+        _transitionDuration = transitionDuration,
+        _reverseTransitionDuration = reverseTransitionDuration {
+    final _initRoute = _initialRoute.fill();
+    _pages = [
+      AppPage(
+        key: ObjectKey(_initRoute),
+        route: _initRoute,
+        child: _getPageBuilder(_initRoute).call(_initialRouteArgs),
+        name: _initRoute.actualUri.toString(),
+        restorationId: _initRoute.template,
+        defaultTransition: _initRoute.transition ?? _defaultTransition,
+        defaultDuration: _initRoute.duration ?? _transitionDuration,
+        defaultReverseDuration:
+            _initRoute.reverseDuration ?? _reverseTransitionDuration,
+      )
+    ];
+  }
+
   static AppRouteObserver? observer;
   final bool debugging;
 
@@ -38,40 +70,19 @@ class RouteManager with ChangeNotifier {
   final Duration? _transitionDuration;
   final Duration? _reverseTransitionDuration;
 
-  final TransitionProvider? _transitionProvider;
+  /// Will be ignored if [defaultCupertinoTransition] is true.
+  final TransitionProvider? _defaultTransition;
 
   late List<AppPage> _pages;
-  final AppRouteType? defaultRouteType;
 
-  RouteManager({
-    required AppRoute initialRoute,
-    this.debugging = false,
-    Map<String, dynamic> initialRouteArgs = const <String, dynamic>{},
-    PageWrapper? routeBuildInterceptor,
-    TransitionProvider? transitionProvider,
-    Duration? transitionDuration,
-    Duration? reverseTransitionDuration,
-    this.defaultRouteType,
-  })  : _initialRoute = initialRoute,
-        _initialRouteArgs = initialRouteArgs,
-        _routeBuildInterceptor = routeBuildInterceptor,
-        _transitionProvider = transitionProvider,
-        _transitionDuration = transitionDuration,
-        _reverseTransitionDuration = reverseTransitionDuration {
-    final _initRoute = _initialRoute.fill();
-    _pages = [
-      AppPage(
-        key: ObjectKey(_initRoute),
-        route: _initRoute,
-        child: _getPageBuilder(_initRoute).call(_initialRouteArgs),
-        name: _initRoute.actualUri.toString(),
-        restorationId: _initRoute.template,
-        transitionProvider: _transitionProvider,
-        transitionDuration: _transitionDuration,
-        reverseTransitionDuration: _reverseTransitionDuration,
-      )
-    ];
-  }
+  /// Sets Cupertino page transition as default for all routes.
+  ///
+  /// On iOS [true] by default. Cupertino could be disabled
+  /// for particular route by setting [AppRoute.isCupertino] to [false].
+  ///
+  /// On other platforms [false] by default. Cupertino could be enabled
+  /// for particular route by setting [AppRoute.isCupertino] to [true].
+  final bool? defaultCupertinoTransition;
 
   @internal
   List<AppPage> get pages => List.unmodifiable(_pages);
@@ -81,6 +92,9 @@ class RouteManager with ChangeNotifier {
 
   AppPage get _currentPage => pages.last;
   AppRoute get currentRoute => _currentPage.route;
+
+  AppRoute? get visibleSubRoot =>
+      pages.getVisibleSubTree()?.root.customPage.route;
 
   void _log(Object message) => debugging
       ? dev.log(message.toString(), name: runtimeType.toString())
@@ -282,17 +296,19 @@ class RouteManager with ChangeNotifier {
   }
 
   void _actualPushRoute(AppRoute route) {
+    final isCupertinoByDefault =
+        defaultCupertinoTransition ?? (Platform.isIOS || Platform.isMacOS);
+
     final page = AppPage(
       key: ObjectKey(route),
       route: route,
       name: route.actualUri.toString(),
       child: _getPageBuilder(route).call(route.data),
       restorationId: route.actualUri.toString(),
-      customDefaultRouteType: defaultRouteType,
-      transitionProvider: route.transition ?? _transitionProvider,
-      transitionDuration: route.duration ?? _transitionDuration,
-      reverseTransitionDuration:
-          route.reverseDuration ?? _reverseTransitionDuration,
+      isCupertinoByDefault: isCupertinoByDefault,
+      defaultTransition: _defaultTransition,
+      defaultDuration: _transitionDuration,
+      defaultReverseDuration: _reverseTransitionDuration,
     );
     observer?.notifyPush(route);
     _pages.add(page);

@@ -41,8 +41,6 @@ enum SubRootDuplicateStrategy {
   Append
 }
 
-enum AppRouteType { Material, Cupertino }
-
 // ignore: must_be_immutable
 class AppRoute extends Equatable {
   final DuplicateStrategy duplicateStrategy;
@@ -56,17 +54,23 @@ class AppRoute extends Equatable {
   UriTemplate get uriTemplate => _uriTemplate;
   final Uri? actualUri;
 
-  /// Allows to select [MaterialPageRoute] or [CupertinoPageRoute].
-  /// Has no effect if custom transition specified.
-  AppRouteType? type;
+  /// Sets route transition to Cupertino.
+  /// If specified then [transition] will be ignored.
+  final bool? isCupertino;
 
   late bool _isSubRoot;
   bool get isSubRoot => _isSubRoot;
 
   int? _unique;
 
+  /// Makes sense only if [RouteManager.defaultCupertinoTransition] = false
+  /// and [isCupertino] = false
   final TransitionProvider? transition;
+
+  /// Only works if [transition] is specified and if it makes sense.
   final Duration? duration;
+
+  /// Only works if [transition] is specified and if it makes sense.
   final Duration? reverseDuration;
 
   AppRoute(
@@ -78,7 +82,7 @@ class AppRoute extends Equatable {
     this.reverseDuration,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
     this.transition,
-    this.type,
+    this.isCupertino,
   }) : subRootDuplicateStrategy = SubRootDuplicateStrategy.None {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
@@ -92,7 +96,7 @@ class AppRoute extends Equatable {
     this.transition,
     this.duration,
     this.reverseDuration,
-    this.type,
+    this.isCupertino,
     SubRootDuplicateStrategy duplicateStrategy =
         SubRootDuplicateStrategy.MakeVisible,
   })  : duplicateStrategy = DuplicateStrategy.None,
@@ -110,7 +114,7 @@ class AppRoute extends Equatable {
     this.duration,
     this.reverseDuration,
     this.duplicateStrategy = DuplicateStrategy.Ignore,
-    this.type,
+    this.isCupertino,
   }) : subRootDuplicateStrategy = SubRootDuplicateStrategy.None {
     _uriTemplate = UriTemplate(template);
     _isSubRoot = false;
