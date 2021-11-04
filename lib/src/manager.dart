@@ -41,6 +41,7 @@ class RouteManager with ChangeNotifier {
   final TransitionProvider? _transitionProvider;
 
   late List<AppPage> _pages;
+  final AppRouteType? defaultRouteType;
 
   RouteManager({
     required AppRoute initialRoute,
@@ -50,6 +51,7 @@ class RouteManager with ChangeNotifier {
     TransitionProvider? transitionProvider,
     Duration? transitionDuration,
     Duration? reverseTransitionDuration,
+    this.defaultRouteType,
   })  : _initialRoute = initialRoute,
         _initialRouteArgs = initialRouteArgs,
         _routeBuildInterceptor = routeBuildInterceptor,
@@ -286,6 +288,7 @@ class RouteManager with ChangeNotifier {
       name: route.actualUri.toString(),
       child: _getPageBuilder(route).call(route.data),
       restorationId: route.actualUri.toString(),
+      customDefaultRouteType: defaultRouteType,
       transitionProvider: route.transition ?? _transitionProvider,
       transitionDuration: route.duration ?? _transitionDuration,
       reverseTransitionDuration:

@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:universal_io/io.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:navigation_manager/navigation_manager.dart';
 
@@ -9,6 +12,7 @@ class AppPage extends Page<AppPage> {
   final Duration? reverseTransitionDuration;
 
   final TransitionProvider? transitionProvider;
+  final AppRouteType? customDefaultRouteType;
 
   const AppPage({
     LocalKey? key,
@@ -20,6 +24,7 @@ class AppPage extends Page<AppPage> {
     this.transitionProvider,
     this.transitionDuration,
     this.reverseTransitionDuration,
+    this.customDefaultRouteType,
   }) : super(
           key: key,
           name: name,
@@ -55,10 +60,33 @@ class AppPage extends Page<AppPage> {
         );
       }
     } else {
-      return MaterialPageRoute(
+      if (route.type != null) {
+        return _selectPageRoute(route.type!);
+      } else if (customDefaultRouteType != null) {
+        return _selectPageRoute(customDefaultRouteType!);
+      } else {
+        return _selectPageRoute(_defaultRouteType);
+      }
+    }
+  }
+
+  AppRouteType get _defaultRouteType {
+    if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
+      return AppRouteType.Cupertino;
+    }
+    return AppRouteType.Material;
+  }
+
+  PageRoute<T> _selectPageRoute<T>(AppRouteType type) {
+    if (type == AppRouteType.Cupertino) {
+      return CupertinoPageRoute(
         settings: this,
         builder: (context) => child,
       );
     }
+    return MaterialPageRoute(
+      settings: this,
+      builder: (context) => child,
+    );
   }
 }
