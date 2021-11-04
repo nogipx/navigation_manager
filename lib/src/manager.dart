@@ -7,19 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:navigation_manager/src/observer.dart';
 import 'package:universal_io/io.dart';
 
-typedef TransitionProvider = Widget Function(
-  BuildContext context,
-  Animation<double> animation,
-  Animation<double> secondaryAnimation,
-  Widget child,
-);
-
-typedef PageWrapper = Widget Function(
-  RouteManager manager,
-  AppRoute route,
-  Widget page,
-);
-
 class RouteManager with ChangeNotifier {
   RouteManager({
     required AppRoute initialRoute,
@@ -158,8 +145,6 @@ class RouteManager with ChangeNotifier {
       _log('List of routes to replace should not be empty.');
     }
   }
-
-  // void replaceUntil(AppRoute route, List<AppRoute> replaceWith) {}
 
   void replaceLast(AppRoute replaceWith, {Map<String, dynamic>? data}) {
     _pages.removeLast();
