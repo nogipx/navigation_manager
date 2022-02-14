@@ -1,3 +1,7 @@
+## 1.2.1
+
+* Fixed [cupertino swipe back not work when WillPopScope used](https://github.com/flutter/flutter/issues/14203#issuecomment-886164874)
+
 ## 1.2.0
 
 * Add automatic page transition selection depending on system. iOS -> Cupertino, Android -> Material

@@ -75,7 +75,7 @@ class AppPage extends Page<AppPage> {
 
   PageRoute<AppPage> _selectPageRoute(bool isCupertino) {
     if (isCupertino) {
-      return CupertinoPageRoute(
+      return AlwaysSwipeBackCupertinoPageRoute(
         settings: this,
         builder: (context) => child,
       );
@@ -88,4 +88,23 @@ class AppPage extends Page<AppPage> {
       );
     }
   }
+}
+
+class AlwaysSwipeBackCupertinoPageRoute<T> extends CupertinoPageRoute<T> {
+  AlwaysSwipeBackCupertinoPageRoute({
+    required WidgetBuilder builder,
+    String? title,
+    RouteSettings? settings,
+    bool maintainState = true,
+    bool fullscreenDialog = false,
+  }) : super(
+          builder: builder,
+          maintainState: maintainState,
+          title: title,
+          settings: settings,
+          fullscreenDialog: fullscreenDialog,
+        );
+
+  @override
+  bool get hasScopedWillPopCallback => false;
 }
